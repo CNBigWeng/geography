@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>中国省级行政区拼图 · 八年级上册地理</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0a1020; --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.10);
+    --txt:#e8eefb; --dim:#8ea0bd; --accent:#4fd1c5; --warn:#ff7a7a; --gold:#ffcb6b;
+    --empty:rgba(255,255,255,.045); --stroke:rgba(255,255,255,.20);
+  }
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1100px 700px at 12% -10%, #16264a 0%, transparent 60%),
+      radial-gradient(900px 600px at 100% 110%, #12314a 0%, transparent 55%),
+      var(--bg);
+    color:var(--txt); font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans SC",system-ui,sans-serif;
+    overflow:hidden; -webkit-tap-highlight-color:transparent;
+  }
+  #app{height:100%;display:flex;flex-direction:column}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:12px 18px 10px;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+  .brand h1{font-size:19px;letter-spacing:.5px;white-space:nowrap}
+  .brand h1 span{color:var(--accent)}
+  .brand .sub{font-size:12px;color:var(--dim);white-space:nowrap}
+  .stats{display:flex;gap:8px;margin-left:auto}
+  .stat{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:5px 13px;text-align:center;min-width:74px;
+  }
+  .stat b{display:block;font-size:15px;font-variant-numeric:tabular-nums;letter-spacing:.4px}
+  .stat span{font-size:10.5px;color:var(--dim)}
+  .tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .seg{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px}
+  .seg button{
+    background:none;border:0;color:var(--dim);font:inherit;font-size:12.5px;
+    padding:5px 12px;border-radius:9px;cursor:pointer;transition:.18s;
+  }
+  .seg button:hover{color:var(--txt)}
+  .seg button.on{background:linear-gradient(180deg,#3fb9ae,#2f9e95);color:#04211f;font-weight:700}
+  button.btn{
+    background:var(--panel);border:1px solid var(--line);color:var(--txt);font:inherit;font-size:12.5px;
+    padding:7px 14px;border-radius:11px;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:6px
+  }
+  button.btn:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.22)}
+  button.btn:active{transform:translateY(1px)}
+  button.btn.pri{background:linear-gradient(180deg,#3fb9ae,#2f9e95);color:#04211f;font-weight:700;border-color:transparent}
+
+  /* ---------- layout ---------- */
+  main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 372px;gap:14px;padding:0 18px 16px}
+  .board-wrap{
+    position:relative;min-height:0;border-radius:18px;overflow:hidden;
+    background:linear-gradient(180deg,rgba(13,25,48,.85),rgba(9,17,34,.9));
+    border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.35) inset, 0 8px 30px rgba(0,0,0,.25);
+  }
+  #board{width:100%;height:100%;display:block;touch-action:none;user-select:none}
+  .legend{
+    position:absolute;left:12px;bottom:12px;display:flex;flex-direction:column;gap:5px;
+    background:rgba(9,16,32,.62);border:1px solid var(--line);border-radius:12px;padding:9px 12px;
+    backdrop-filter:blur(6px);font-size:11.5px;color:var(--dim);pointer-events:none
+  }
+  .legend .row{display:flex;align-items:center;gap:7px}
+  .legend i{width:11px;height:11px;border-radius:3px;display:block}
+  .legend .t{font-size:10.5px;letter-spacing:1px;color:#6f83a4;margin-bottom:1px}
+  .tipbar{
+    position:absolute;left:50%;top:12px;transform:translateX(-50%);
+    background:rgba(9,16,32,.7);border:1px solid var(--line);border-radius:999px;
+    padding:6px 16px;font-size:12px;color:var(--dim);backdrop-filter:blur(6px);
+    max-width:92%;text-align:center;pointer-events:none;transition:opacity .3s
+  }
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:95;
+    background:linear-gradient(180deg,rgba(31,52,84,.96),rgba(18,32,56,.96));
+    border:1px solid rgba(120,200,230,.35);border-radius:14px;padding:10px 20px;
+    font-size:14px;opacity:0;pointer-events:none;transition:.32s cubic-bezier(.2,.9,.3,1);
+    box-shadow:0 12px 34px rgba(0,0,0,.45);white-space:nowrap
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast b{color:var(--accent);font-size:15px}
+  .toast em{color:var(--gold);font-style:normal}
+
+  /* ---------- tray ---------- */
+  .tray{
+    display:flex;flex-direction:column;min-height:0;border-radius:18px;
+    background:linear-gradient(180deg,rgba(13,25,48,.72),rgba(9,17,34,.82));
+    border:1px solid var(--line);overflow:hidden
+  }
+  .tray-head{
+    display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);
+    font-size:13px;color:var(--dim)
+  }
+  .tray-head b{color:var(--txt);font-size:13.5px}
+  .bar{flex:1;height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#3fb9ae,#7ee0c9);transition:width .35s}
+  .tray-grid{
+    flex:1;min-height:0;overflow-y:auto;padding:12px;
+    display:grid;grid-template-columns:repeat(4,1fr);gap:9px;align-content:start
+  }
+  .tray-grid::-webkit-scrollbar{width:8px}
+  .tray-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:9px}
+  .cell{
+    position:relative;aspect-ratio:1/1;border-radius:13px;cursor:grab;touch-action:none;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
+    display:flex;align-items:center;justify-content:center;padding:6px 4px 15px;
+    transition:transform .16s, border-color .16s, background .16s, opacity .3s
+  }
+  .cell:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.22);transform:translateY(-2px)}
+  .cell.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(79,209,197,.25), 0 8px 22px rgba(0,0,0,.3)}
+  .cell.done{pointer-events:none;background:rgba(79,209,197,.06);border-color:rgba(79,209,197,.22);transform:none}
+  .cell.done .land{fill:rgba(255,255,255,.13);stroke:rgba(255,255,255,.2)}
+  .cell.done .nm{color:#5d7d8c}
+  .cell.done::after{content:"✓";position:absolute;right:6px;top:3px;font-size:12px;color:#4fd1c5;font-weight:700}
+  .cell.shake{animation:shake .38s}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+  .cell svg{width:100%;height:100%;overflow:visible}
+  .cell .nm{
+    position:absolute;left:0;right:0;bottom:3px;text-align:center;font-size:11px;color:#cfe0f5;
+    letter-spacing:.5px;pointer-events:none
+  }
+  .cell .land{fill:var(--c,#9fb3d1);stroke:rgba(255,255,255,.55);stroke-width:1;vector-effect:non-scaling-stroke}
+  body.challenge .cell:not(.done) .land{fill:#8ea3c1;stroke:rgba(255,255,255,.4)}
+  body.challenge .cell .nm{display:none}
+
+  /* ---------- board svg ---------- */
+  #board .ocean{fill:transparent}
+  #board .grid{stroke:rgba(120,170,230,.07);stroke-width:1}
+  #board .prov .land{
+    fill:var(--empty); stroke:var(--stroke); stroke-width:1; vector-effect:non-scaling-stroke;
+    transition:fill .5s ease, stroke .35s ease;
+  }
+  #board .prov.on .land{fill:var(--c);stroke:rgba(255,255,255,.75);stroke-width:1.2}
+  #board .prov.hover .land{stroke:#fff;stroke-width:2;stroke-dasharray:5 3}
+  #board .prov.bad .land{fill:rgba(255,90,90,.30);stroke:#ff7a7a;stroke-width:2}
+  body.nohint #board .prov .land{stroke:transparent}
+  #board .prov.hintT .land{stroke:var(--gold);stroke-width:2.4}
+  #board .lbl{
+    font-size:14px;fill:#fff;paint-order:stroke;stroke:rgba(6,12,24,.85);stroke-width:3.2px;
+    stroke-linejoin:round;text-anchor:middle;dominant-baseline:middle;pointer-events:none;
+    opacity:0;transition:opacity .45s;font-weight:600
+  }
+  #board .lbl.on{opacity:1}
+  body.easy #board .lbl{opacity:.72;stroke:rgba(6,12,24,.7)}
+  body.easy #board .lbl.on{opacity:1}
+  #board .lead{stroke:rgba(255,255,255,.45);stroke-width:1;opacity:0;transition:opacity .45s;vector-effect:non-scaling-stroke}
+  #board .lead.on{opacity:.8}
+  #board .dotc{fill:#fff;opacity:0;transition:opacity .45s}
+  #board .dotc.on{opacity:.85}
+  #board .ring{
+    fill:none;stroke:var(--gold);stroke-width:2.5;vector-effect:non-scaling-stroke;
+    transform-box:fill-box;transform-origin:center;animation:pulse 1.1s ease-out infinite
+  }
+  @keyframes pulse{0%{transform:scale(.45);opacity:1}100%{transform:scale(1.25);opacity:0}}
+  #board .insetbox{fill:rgba(255,255,255,.025);stroke:rgba(120,180,230,.45);stroke-width:1;vector-effect:non-scaling-stroke}
+  #board .insetline{fill:none;stroke:rgba(150,215,255,.85);stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-linecap:round}
+  #board .insettxt{fill:#8fb2d6;font-size:11.5px;text-anchor:middle;dominant-baseline:middle}
+
+  /* ---------- drag ghost / cursor tip ---------- */
+  #layer{position:fixed;inset:0;pointer-events:none;z-index:90}
+  .ghost{position:absolute;left:0;top:0;width:104px;height:104px;will-change:transform}
+  .ghost svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55))}
+  .ghost .land{fill:var(--c,#9fb3d1);stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
+  .ghost .nm{display:none}
+  body.challenge .ghost .land{fill:#8ea3c1}
+  #tip{
+    position:absolute;padding:3px 9px;border-radius:8px;background:rgba(8,14,28,.9);
+    border:1px solid rgba(255,255,255,.16);font-size:12px;color:#dbe7fa;white-space:nowrap;
+    transform:translate(14px,-50%);opacity:0;transition:opacity .12s
+  }
+
+  /* ---------- win overlay ---------- */
+  #win{
+    position:fixed;inset:0;z-index:120;display:none;align-items:center;justify-content:center;
+    background:rgba(4,8,18,.72);backdrop-filter:blur(7px)
+  }
+  #win.show{display:flex}
+  .card{
+    position:relative;width:min(92vw,430px);border-radius:22px;padding:26px 28px 22px;text-align:center;
+    background:linear-gradient(180deg,rgba(26,44,74,.98),rgba(13,23,42,.98));
+    border:1px solid rgba(120,200,230,.3);box-shadow:0 30px 80px rgba(0,0,0,.6);
+    animation:pop .4s cubic-bezier(.2,1.2,.4,1)
+  }
+  @keyframes pop{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
+  .card h2{font-size:22px;margin-bottom:4px}
+  .card .stars{font-size:30px;letter-spacing:6px;color:#3a4a66;margin:10px 0 4px}
+  .card .stars i{font-style:normal}
+  .card .stars i.on{color:var(--gold);text-shadow:0 0 16px rgba(255,203,107,.6)}
+  .card .res{display:flex;justify-content:center;gap:10px;margin:14px 0 18px;flex-wrap:wrap}
+  .card .res div{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:12px;padding:8px 16px;min-width:88px}
+  .card .res b{display:block;font-size:18px}
+  .card .res span{font-size:11px;color:var(--dim)}
+  .card .btns{display:flex;gap:10px;justify-content:center}
+  .card p.note{font-size:12px;color:var(--dim);margin-top:14px;line-height:1.6}
+  #confetti{position:absolute;inset:0;overflow:hidden;border-radius:22px;pointer-events:none}
+  .cf{position:absolute;top:-14px;width:8px;height:13px;border-radius:2px;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(520px) rotate(720deg);opacity:.15}}
+
+  /* ---------- 视图切换 / 连线练习 ---------- */
+  .tabs{display:flex;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px}
+  .tabs button{background:none;border:0;color:var(--dim);font:inherit;font-size:12.5px;padding:6px 14px;border-radius:9px;cursor:pointer;transition:.18s;white-space:nowrap}
+  .tabs button:hover{color:var(--txt)}
+  .tabs button.on{background:linear-gradient(180deg,rgba(79,209,197,.24),rgba(79,209,197,.12));color:var(--accent);font-weight:700;box-shadow:inset 0 0 0 1px rgba(79,209,197,.38)}
+  #matchMain{display:none;grid-template-columns:1fr;padding:0 18px 16px;min-height:0}
+  body.view-match #mapMain{display:none}
+  body.view-match #matchMain{display:grid}
+  .match-wrap{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;border-radius:18px;border:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(13,25,48,.72),rgba(9,17,34,.86));box-shadow:0 18px 50px rgba(0,0,0,.3) inset}
+  .match-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--dim)}
+  .match-bar b{color:var(--txt)}
+  .match-bar b.acc{color:var(--accent)}
+  .match-bar .mb-hint{flex:1;min-width:200px;line-height:1.5}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--dim);
+    font:inherit;font-size:12px;padding:5px 11px;border-radius:999px;cursor:pointer;transition:.16s}
+  .chip i{width:8px;height:8px;border-radius:99px;display:block}
+  .chip .cnt{font-size:10.5px;color:#7d93b5}
+  .chip:hover{color:var(--txt);background:rgba(255,255,255,.1)}
+  .chip.on{background:rgba(79,209,197,.14);border-color:rgba(79,209,197,.45);color:var(--accent);font-weight:700}
+  .chip.on .cnt{color:var(--accent)}
+  .match-area{position:relative;flex:1;min-height:0;padding:14px;display:grid;align-content:start;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.75fr) minmax(0,1.35fr);gap:0 38px}
+  #matchLines{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:visible}
+  #matchLines path{stroke-dasharray:100;stroke-dashoffset:0;animation:draw .42s ease-out}
+  @keyframes draw{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+  #matchLines path.pend{animation:none;stroke-dasharray:7 6}
+  .mcol{position:relative;z-index:2;display:flex;flex-direction:column;gap:10px}
+  .mhead{font-size:12px;color:#7d93b5;letter-spacing:3px;text-align:center;padding-bottom:2px}
+  .mitem{position:relative;display:flex;align-items:center;justify-content:center;height:54px;border-radius:13px;
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.10);
+    cursor:pointer;touch-action:none;font-size:15px;letter-spacing:.5px;transition:.16s;user-select:none;text-align:center;padding:0 6px}
+  .col-short .mitem{font-size:19px;font-weight:600;color:#e2ecfb}
+  .mitem:hover{background:rgba(255,255,255,.11);border-color:rgba(255,255,255,.24)}
+  .mitem.sel{border-color:var(--accent);background:rgba(79,209,197,.13);box-shadow:0 0 0 2px rgba(79,209,197,.26)}
+  .mitem.hot{border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,203,107,.3)}
+  .mitem.linked{cursor:pointer}
+  .mitem.locked{cursor:default}
+  .mitem.bad{animation:shake .38s;border-color:var(--warn);background:rgba(255,122,122,.16)}
+  .mitem.done-p{opacity:.66}
+  .mitem.hintP{border-color:var(--gold);color:var(--gold);animation:glow .95s ease-in-out infinite}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 2px rgba(255,203,107,.22)}50%{box-shadow:0 0 0 7px rgba(255,203,107,.10)}}
+
+  @media (max-width:1080px){
+    main{grid-template-columns:minmax(0,1fr) 320px}
+    .brand .sub{display:none}
+  }
+  @media (max-width:880px){
+    #matchMain{padding:0 12px 12px}
+    .match-area{gap:0 14px;padding:10px}
+    .mitem{height:44px;font-size:13px}
+    .col-short .mitem{font-size:16px}
+    .match-bar{font-size:11.5px;gap:8px;padding:9px 12px}
+  }
+  @media (max-width:880px){
+    body{overflow:auto}
+    #app{height:auto;min-height:100%}
+    main{grid-template-columns:1fr;grid-template-rows:minmax(46vh,1fr) auto;padding:0 12px 12px}
+    .board-wrap{min-height:46vh}
+    .tray{max-height:38vh}
+    .tray-grid{grid-template-columns:repeat(5,1fr)}
+    header{gap:10px;padding:10px 12px}
+    .brand h1{font-size:16px}
+    .stats{order:3;width:100%;margin-left:0}
+    .stat{flex:1}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <h1>中国省级行政区<span>拼图</span></h1>
+      <div class="sub">八年级上册地理 · 34 个省级行政区域</div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button data-view="map" class="on">🗺️ 地图拼图</button>
+      <button data-view="match">🔗 连线练习</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="sDone">0/34</b><span id="sDoneLabel">已拼好</span></div>
+      <div class="stat"><b id="sTime">00:00</b><span>用时</span></div>
+      <div class="stat"><b id="sErr">0</b><span>错误</span></div>
+      <div class="stat"><b id="sBest">--:--</b><span>最佳</span></div>
+    </div>
+    <div class="tools">
+      <div class="seg" id="seg">
+        <button data-mode="easy" class="on">简单</button>
+        <button data-mode="normal">普通</button>
+        <button data-mode="challenge">挑战</button>
+      </div>
+      <button class="btn" id="btnHint">💡 提示</button>
+      <button class="btn" id="btnSound">🔊</button>
+      <button class="btn pri" id="btnReset">↻ 重新开始</button>
+    </div>
+  </header>
+
+  <main id="mapMain">
+    <section class="board-wrap" id="boardWrap">
+      <svg id="board" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="tipbar" id="tipbar">把右侧的省份碎片拖到地图上的正确位置</div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="tray">
+      <div class="tray-head">
+        <b>省份碎片</b>
+        <div class="bar"><i id="barIn"></i></div>
+        <span id="trayCnt">34</span>
+      </div>
+      <div class="tray-grid" id="trayGrid"></div>
+    </aside>
+  </main>
+
+  <main id="matchMain">
+    <section class="match-wrap">
+      <div class="match-bar">
+        <span class="mb-hint">把左边的 <b>简称</b>、右边的 <b>行政中心</b>，分别连到中间对应的 <b>全称</b> 上 —— 连对的线会按地理分区上色</span>
+        <div class="chips" id="scopeChips"></div>
+        <span>第 <b class="acc" id="mRound">1</b> 轮 · 本轮 <b id="mLeft">6</b> 个待完成</span>
+      </div>
+      <div class="match-area" id="matchArea">
+        <svg id="matchLines" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="mcol col-short" data-col="0" id="col0"><div class="mhead">简称</div></div>
+        <div class="mcol col-name" data-col="1" id="col1"><div class="mhead">全 称</div></div>
+        <div class="mcol col-cap" data-col="2" id="col2"><div class="mhead">行政中心</div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="layer"><div id="tip"></div></div>
+<div class="toast" id="toast"></div>
+
+<div id="win">
+  <div class="card">
+    <div id="confetti"></div>
+    <h2 id="winTitle">拼图完成！</h2>
+    <div class="stars" id="winStars"><i>★</i><i>★</i><i>★</i></div>
+    <div class="res">
+      <div><b id="winTime">00:00</b><span>用时</span></div>
+      <div><b id="winErr">0</b><span>错误次数</span></div>
+      <div><b id="winHint">0</b><span>提示次数</span></div>
+    </div>
+    <div class="btns">
+      <button class="btn pri" id="btnAgain">再来一局</button>
+      <button class="btn" id="btnClose">看看地图</button>
+    </div>
+    <p class="note" id="winNote">提示：换「挑战」模式再试一次 —— 遮住所有名称，只看轮廓，你能拼对吗？</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= 数据（省级行政区域边界，Albers 等积投影，已抽稀） ================= */
+const GEO = {"view":[0,0,1168.0,863.5],"provinces":[{"id":"110000","code":"110000","name":"北京","short":"京","capital":"北京","region":"华北","ox":715.32,"oy":307.98,"bw":32.62,"bh":36.57,"rings":[[3012,929,3262,718,2346,719,1734,0,1676,199,1441,212,1497,389,1264,349,1493,693,1148,674,1043,979,402,1327,823,1906,651,2190,521,2138,28,2522,0,2705,266,2981,68,3072,236,3480,482,3413,739,3624,890,3402,1373,3373,1804,3657,1728,3472,1914,3295,2358,3244,2573,2803,2269,2585,2225,2264,2916,2101,3179,1800,2804,1135,3012,929]]},{"id":"120000","code":"120000","name":"天津","short":"津","capital":"天津","region":"华北","ox":739.2,"oy":324.55,"bw":21.98,"bh":38.19,"rings":[[1649,1822,1822,1774,1878,1397,1594,1379,1528,1544,1413,1456,1077,756,1113,531,1512,554,1476,347,827,0,508,454,512,884,671,961,518,1018,601,1399,246,1446,175,1311,0,1538,303,2648,58,2850,119,3480,682,3579,778,3785,937,3640,1028,3819,1796,3441,1613,3126,1944,3023,1906,2420,2198,2135,1801,1885,1253,1971,1369,1815,1649,1822]]},{"id":"130000","code":"130000","name":"河北","short":"冀","capital":"石家庄","region":"华北","ox":686.33,"oy":270.96,"bw":102.56,"bh":152.42,"rings":[[6086,4453,5703,4837,5768,5130,6013,5415,6338,5368,6763,5706,6799,5913,6400,5890,6363,6013,6700,6815,6815,6903,6881,6738,7165,6757,7024,7274,7400,7373,7811,7897,8377,8105,8374,7602,8982,7409,8957,7538,9517,6804,9410,6619,9494,6069,9803,5623,10256,5442,9965,4923,9782,4896,9546,4211,9051,4293,8840,4121,8890,4006,8682,4070,8291,3768,8339,3446,8498,3409,8368,3234,8588,3104,8776,2581,8215,2691,8115,2538,7322,2720,7184,2262,6856,1896,6905,1705,7101,1773,7149,1603,6942,1224,7023,1139,6740,1223,6683,925,6460,824,6489,468,6031,0,5549,97,5453,428,4975,437,4719,650,4746,1128,4560,1128,4752,1349,4631,1623,4252,1779,3842,1672,3557,2203,3090,1889,2355,2478,2430,2717,2156,2817,1592,2808,1664,2247,1484,1696,989,1667,943,2011,691,2099,480,2488,586,3102,261,3096,29,3339,295,3765,0,4094,425,4446,424,4659,865,5161,959,5645,1326,5672,1242,5855,642,6079,649,6355,479,6278,367,6507,615,6710,889,6678,907,6805,1204,6765,1271,7246,1557,7396,1383,8015,1478,8213,1290,8550,896,8638,781,8460,538,8636,340,8898,502,9339,71,9830,98,10479,606,10666,1053,11546,976,11678,1233,11725,709,12959,768,13626,630,13576,621,13787,263,14003,459,14469,793,14738,1886,14882,2341,15149,2902,15043,2925,15242,3257,14851,3614,15089,3897,14922,3448,14179,3746,13551,4087,13406,4460,12165,4902,12060,4852,11797,5017,11548,5212,11771,5747,10855,6826,10710,7017,10192,7311,10010,7557,9429,7259,9473,6947,8938,6315,9178,6224,8999,6065,9144,5969,8938,5406,8839,5345,8209,5590,8007,5287,6898,4813,6997,4627,7174,4703,7359,4272,7075,3789,7104,3547,7323,3381,7115,3135,7182,2968,6849,3165,6683,2899,6407,2927,6224,3420,5840,3550,5892,3721,5608,3301,5029,3941,4681,4047,4376,4392,4395,4163,4051,4396,4091,4339,3914,4575,3901,4582,3722,5245,4421,6086,4453],[5821,5774,5124,5966,5167,6287,5401,6361,5397,6721,5533,6805,5888,6758,5805,6377,5958,6320,5760,6093,5821,5774]]},{"id":"140000","code":"140000","name":"山西","short":"晋","capital":"太原","region":"华北","ox":634.9,"oy":319.51,"bw":67.0,"bh":142.69,"rings":[[299,14269,1093,14189,1248,13922,1645,13723,2392,13595,2785,13073,3233,13056,3192,12552,4468,12620,4841,12391,4836,12242,5071,12290,5162,12019,5368,12051,5692,11786,5753,11498,5895,11541,5784,11130,5917,11076,5937,9883,5603,9614,5406,9148,5764,8931,5774,8721,5912,8771,5853,8104,6376,6870,6120,6823,6196,6691,5750,5811,5241,5624,5201,5124,5284,4771,5645,4484,5494,3981,5925,3605,6039,3783,6433,3695,6577,3458,6700,2541,6415,2391,6348,1910,6050,1950,6032,1823,5759,1855,5511,1652,5622,1423,5792,1500,5785,1224,6386,1000,6470,817,6103,790,6009,306,5734,0,5657,478,5323,663,5219,542,4864,956,4467,1055,4342,855,3989,983,3547,1474,3046,1213,2811,1329,2320,2402,2294,2796,2041,2891,1551,2759,1352,3290,994,3368,1184,3594,1033,4141,780,4370,670,5543,82,6167,135,6700,524,7095,653,7566,409,7859,508,8188,9,8815,72,9592,262,9795,227,10741,579,11924,0,13652,20,14076,299,14269]]},{"id":"150000","code":"150000","name":"内蒙古","short":"内蒙古","capital":"呼和浩特","region":"华北","ox":416.13,"oy":29.58,"bw":422.5,"bh":371.87,"rings":[[0,24568,894,27199,505,27657,1009,28467,1575,28909,1540,29697,2024,29482,1938,29321,2104,29273,2302,29660,2297,29437,2627,29284,2806,29534,2950,29132,3592,29194,3779,29011,4408,29099,4684,29544,4524,30526,3948,31093,3265,31344,3898,31436,4594,31865,4703,32268,4993,32343,4981,32525,5558,32539,5511,33394,5730,33581,6175,33432,6117,33605,6327,33987,6776,34278,7075,34276,7596,33772,7202,33314,8257,32969,9184,33341,9762,32829,10621,32548,11018,32646,10944,32921,11189,33621,10610,34390,9849,34920,10043,35483,9744,35747,9814,36147,10285,36341,11138,37187,11571,36945,12596,36800,13090,36526,13578,36530,13617,36352,13855,36302,13997,34401,14192,33797,14481,33243,14716,33256,14705,32995,15094,32966,15243,32731,15545,32735,15575,33089,15880,33507,15449,34209,15275,34954,15077,35115,15204,35240,15986,35548,16293,35466,16730,35813,16683,35922,17671,36257,17755,36566,19047,36444,19049,35622,19295,35896,19517,35660,19276,35253,19453,34735,19966,34276,19911,34112,20379,33745,20590,33277,20855,33152,20803,32783,20911,32913,21333,32735,21203,32351,21611,32654,21835,32478,22021,32730,22434,32159,22836,31958,22782,32438,23195,32311,23428,31752,23918,31884,24171,31789,24197,31395,24688,30322,24923,30206,25424,30467,25866,29976,26219,29847,26344,30048,26645,29990,27096,29535,27200,29656,27534,29471,27611,28993,27446,28584,27021,28232,27316,27903,27042,27518,27281,27234,27607,27240,27501,26626,27711,26237,27963,26149,28009,25805,28505,25834,28684,26385,28612,26946,29176,26955,29451,26855,29375,26616,30110,26027,30577,26341,30863,25810,31273,25917,31651,25761,31772,25487,31581,25266,31767,25266,31739,24788,31995,24575,32474,24566,32570,24235,33051,24138,33510,24606,33480,24962,33704,25063,33760,25361,34043,25277,33962,25362,34170,25741,34122,25911,33925,25843,33876,26034,34403,26919,35135,26676,35235,26829,35739,26798,35983,26447,36007,26112,35729,25646,35781,24961,35509,24747,35872,24270,36099,24543,36471,24572,37054,25662,37508,24663,38117,24193,38421,24179,38843,23608,39180,23456,39354,23604,39613,23290,39641,22986,40062,22919,40044,22815,40366,22869,40441,22694,40238,22558,40368,22506,41071,22678,41621,22305,41518,22260,41604,21939,42093,21825,42145,20978,41685,20975,41488,20824,41447,20699,41680,20666,41609,20560,41775,20448,41292,19639,41323,19331,40840,18954,40777,18642,40173,19261,39559,19438,39496,18945,39219,18767,39203,18333,38965,18052,39116,17203,38969,17185,38945,16863,38667,16758,38548,16360,38031,16315,38248,16000,38117,15744,38232,15667,38938,16055,39183,15743,39322,16012,39387,15923,39713,16127,39645,15308,40015,15180,40154,14819,39759,14155,40610,13738,40529,13298,40409,13465,40393,13203,40034,13146,40213,13258,40208,13479,39975,13494,39934,13750,39699,13814,39446,13343,39261,13347,39338,13111,38966,13061,38586,12620,38769,12146,39512,11484,39646,11074,40016,10798,40801,9546,41269,10267,41220,10470,41360,10309,41171,9428,41345,8139,41455,7965,41782,8027,41901,7862,41856,7278,41563,6889,41688,6832,41518,6219,41666,5951,41551,5891,41769,5595,41801,5135,42149,4746,41966,4373,42242,4034,42250,3653,41010,2631,40687,2620,40443,3286,40136,3464,39924,3389,39854,3642,39591,3534,39175,3712,38836,3562,38511,3904,37886,3929,37072,2418,37224,1986,36783,1969,36704,1769,36278,1583,36054,2092,35726,2105,35578,1855,34897,1631,35571,607,35348,162,35069,0,34174,295,33595,1251,33264,1511,33385,1899,33895,1692,34305,1862,34230,2338,34506,2656,34405,3178,33697,3831,33436,5154,32755,6798,33095,6815,33144,7233,32829,7676,32108,7897,31127,8933,29467,8420,28464,11475,28560,12031,28151,12305,28281,12810,28871,13275,29307,12796,29595,12850,30080,12660,30549,12766,31028,13113,31559,12212,32678,12116,33048,12557,33615,12715,33681,12982,34018,13074,33969,13193,34630,13614,35040,14205,35095,14722,34930,14719,34771,14960,34310,14987,33919,14955,33565,14709,33402,14929,32677,14912,31885,15503,31633,15353,31373,15433,31362,15931,30542,15978,30189,16225,29796,16998,29867,17419,29045,18217,28546,18421,27583,18416,27295,18558,27192,18957,26715,19576,26003,20114,24772,20004,24094,19539,23267,19642,22875,20281,22611,21241,23387,22123,23553,22665,23308,22730,22972,23160,22131,23573,21271,24855,20760,25193,20436,25226,19780,25654,18752,25839,16524,25768,13753,26957,12923,27406,12563,27784,12423,27624,11772,27605,11784,27126,10707,27281,9977,27091,8843,26461,7810,26256,7398,25633,5899,25202,5038,25121,4947,25238,3718,25328,1615,25006,0,24568]]},{"id":"210000","code":"210000","name":"辽宁","short":"辽","capital":"沈阳","region":"东北","ox":769.25,"oy":236.45,"bw":111.34,"bh":113.17,"rings":[[8062,8251,8981,7994,9093,8151,9269,7349,9781,6577,10015,6276,10234,6267,10157,6128,10530,5773,10770,5768,10963,5376,11134,5384,11124,5162,10903,5060,11118,4471,10620,4040,10331,3469,10124,3510,10022,3196,9958,2862,10188,2443,9892,2481,9816,2168,9611,2168,9575,1901,9357,1782,9346,1503,9206,1509,9073,1146,8920,1206,8780,447,8253,1209,8089,1165,8167,971,7979,920,8089,718,7787,419,7386,389,6928,0,6781,1138,6292,1252,6206,1573,6309,1618,5759,1991,5056,1819,4926,1871,5129,2007,5054,2182,4732,2127,4750,2232,4329,2299,4301,2603,4042,2917,3868,2769,3531,2921,3109,3492,2805,3506,2196,3976,1743,4975,1159,3885,787,3856,560,3583,246,3918,197,4060,469,4274,417,4959,696,5642,296,6555,76,6684,207,6860,48,6897,0,7219,391,7521,599,7456,548,7572,760,7744,1255,7662,1490,8347,1674,8373,1925,8835,2903,8202,3020,7591,3290,7067,3607,6929,3472,6731,3663,6717,3701,6549,4224,6551,4304,6424,4414,6548,4813,6304,5115,6741,5439,6705,5657,7015,5633,7333,5264,7717,5398,7955,5092,8452,4749,8646,4690,9225,4346,9442,4485,9832,4924,9959,5243,9727,5056,9991,5196,10390,5098,10230,5006,10522,4767,10502,4747,10687,4348,10887,4502,11317,5402,10824,5222,10678,5287,10530,5718,10549,5580,10421,5918,10307,6056,10058,5951,9949,6714,9122,8062,8251]]},{"id":"220000","code":"220000","name":"吉林","short":"吉","capital":"长春","region":"东北","ox":796.44,"oy":174.68,"bw":159.09,"bh":113.26,"rings":[[13803,6514,14003,6334,13939,5122,14273,5063,14301,5211,14591,5207,14662,5609,15028,5879,15125,5693,15428,6067,15257,5927,15205,5558,14883,5503,15909,4755,15794,4590,15847,3465,15619,3698,15393,3566,15185,3786,14721,3482,14369,3505,14075,2676,13756,3242,13452,2876,13218,3285,12500,3597,12584,4097,12071,4347,11737,3975,11721,3701,11512,3674,11120,3156,11021,2679,10782,2417,10564,2854,10375,2892,10550,3349,10109,3593,9483,2962,9398,2738,9509,2577,8902,2558,8739,2773,8513,2236,8617,1931,8331,1572,8070,1623,7675,1443,7223,1799,6853,1828,6306,1512,6220,1161,5835,1307,5783,1529,5386,1634,5036,1357,5040,1568,4302,1721,3561,1118,3630,946,3441,765,3513,563,3279,0,2720,253,2218,236,1984,670,1613,798,1682,1618,1355,1413,1291,1503,1151,1234,907,1545,522,1249,86,1234,216,1491,0,1805,517,1851,636,2248,914,2353,938,2676,1085,2694,934,3542,1172,3824,1188,4258,1465,4435,1528,4928,2141,4751,2746,4132,2809,4444,3292,4821,3261,5129,3687,5779,3648,6156,3416,6189,3654,6465,4114,6468,4140,6231,4317,6227,4666,6566,5067,6596,5370,6896,5259,7097,5447,7148,5370,7342,5534,7387,6061,6624,6200,7383,6354,7323,6486,7687,6627,7680,6637,7959,6855,8079,6892,8346,7096,8345,7173,8658,7469,8620,7236,9075,7404,9687,7612,9646,7900,10217,8399,10648,8194,11326,8913,11088,8970,10699,9502,9951,9466,9263,9910,8834,10408,9212,10342,9365,10584,9433,11057,9346,11231,9453,11795,9253,12018,9382,12231,8842,11561,8021,12997,7617,13312,7116,13260,6741,13414,6510,13746,6652,13803,6514]]},{"id":"230000","code":"230000","name":"黑龙江","short":"黑","capital":"哈尔滨","region":"东北","ox":765.09,"oy":20.09,"bw":214.91,"bh":198.06,"rings":[[5855,15711,6414,15458,6647,16021,6575,16223,6764,16405,6695,16576,7436,17179,8175,17026,8171,16816,8520,17092,8917,16987,8970,16765,9354,16620,9440,16971,9987,17287,10358,17257,10810,16901,11205,17081,11466,17030,11752,17389,11647,17694,11873,18231,12037,18016,12643,18036,12533,18196,12618,18420,13243,19051,13684,18807,13510,18350,13698,18312,13917,17876,14155,18137,14255,18615,14647,19133,14855,19159,14871,19433,15205,19806,15719,19556,15634,19055,16352,18744,16587,18335,16890,18701,17209,18135,17503,18963,17855,18941,18319,19245,18528,19025,18754,19156,18958,18924,18781,18902,18648,17746,17960,16396,17658,16153,17896,15863,18390,15661,18752,14718,18977,14859,20537,14952,20749,14648,20566,13998,20926,13427,20793,12994,21032,12672,20936,12190,21176,11907,21139,11578,20947,11464,21079,11048,20937,10299,21086,9964,20879,9516,21343,9023,21491,8428,20996,7966,20996,7334,21467,6769,21220,6814,21043,7057,20242,7274,19665,7740,19472,8104,18871,8249,18548,8797,18318,8845,18306,9368,18011,9344,16947,9880,16703,9749,16042,10006,15786,9585,15363,9292,15511,8816,15280,8396,15077,8477,14895,8261,14946,7636,14324,7827,13803,7572,13375,7120,13132,7156,13003,6909,12424,7198,12272,7015,11902,7050,11819,6816,11058,7124,10507,7132,9992,6730,9836,6249,9889,5828,9460,5700,9208,4832,8543,4300,8505,3737,8370,3761,8436,3913,8298,3868,8359,3573,8186,3557,8200,3324,7951,3232,7976,2985,7493,2568,7534,2144,7162,2073,7291,1840,7143,1846,7142,1673,6777,1348,6509,1279,6647,947,6449,1008,6198,757,6014,880,6041,582,5828,431,5730,523,5140,311,4815,464,4822,606,4515,432,4180,462,3851,187,3712,284,2809,0,2809,131,2481,51,2009,355,1397,505,1260,397,421,787,173,949,703,1457,479,2009,0,2580,682,2803,1017,3099,1381,2532,1807,2718,1886,2918,2327,2934,2175,3367,2989,4878,3614,4853,3939,4511,4278,4661,4694,4483,4957,4591,5028,4338,5239,4413,5546,4235,5791,3569,6113,3580,7353,4602,7345,4983,7069,5322,7252,5695,6905,6083,6873,6543,6654,6840,6769,6900,6621,7167,6791,7781,6666,7838,6959,8226,7004,8810,6885,8976,6558,8913,6448,9088,6274,10377,6463,11258,6323,11419,6372,11216,5904,10495,5120,11747,4749,12022,4615,12433,3872,13095,3689,13569,4069,14010,4442,14060,4364,14295,4549,14292,4627,14622,4841,14783,5037,14699,5079,14442,5311,14428,5316,14206,5137,14094,5496,14151,5513,14414,5633,14246,5713,14687,4862,15104,5258,15768,5855,15711]]},{"id":"310000","code":"310000","name":"上海","short":"沪","capital":"上海","region":"华东","ox":837.2,"oy":501.53,"bw":21.56,"bh":26.55,"rings":[[80,2014,243,1995,312,2386,501,2310,894,2655,1594,2216,2095,2225,2156,2019,2067,1685,1488,1129,714,784,342,1158,353,1649,0,1760,80,2014],[1833,355,1113,282,546,0,212,304,751,684,852,582,1615,801,1903,692,1833,355]]},{"id":"320000","code":"320000","name":"江苏","short":"苏","capital":"南京","region":"华东","ox":744.74,"oy":434.95,"bw":110.79,"bh":93.64,"rings":[[1688,1708,1464,2025,1217,1420,648,895,650,1028,362,1010,6,1253,0,1732,874,2199,1126,2169,1329,2683,1611,2837,2191,2782,2309,2940,2405,2828,2667,3107,2713,3511,3443,3359,3424,3953,3317,3929,3200,4551,3400,4729,3706,4559,3930,5036,3869,5318,4135,5576,4822,5439,4761,5185,4921,4927,5232,4885,5570,5133,5724,5608,5508,5990,5142,5724,4527,5824,4602,6051,4785,6047,4851,6364,4780,6643,4541,6712,4364,7004,4352,7336,4638,7499,4615,7645,4914,7649,5032,7744,4951,7891,5181,7784,5356,7894,5415,8408,5195,8600,5361,8788,6364,8482,6482,8753,6888,8841,7462,8617,7885,9039,8497,9023,8683,9364,9025,9021,8967,8836,9326,8672,9246,8418,9599,8307,9589,7816,9997,7342,9458,6962,9579,6770,9792,6658,10359,6940,11079,7013,10733,6301,9925,5931,9771,5379,8864,5115,8810,4559,8394,3679,8206,3567,7099,1530,5820,1127,5475,941,5562,790,5301,786,5504,752,5393,697,5032,717,5016,0,4297,307,4131,968,4252,1002,3701,1230,3630,1788,3284,1916,3245,1547,2791,1301,2519,1397,2572,1693,2354,1656,2215,1867,1688,1708]]},{"id":"330000","code":"330000","name":"浙江","short":"浙","capital":"杭州","region":"华东","ox":790.35,"oy":521.11,"bw":78.07,"bh":87.49,"rings":[[1021,6792,1144,6888,1561,6664,1741,6801,1686,7417,1872,7512,2186,8495,2393,8382,2897,8481,3465,7828,3899,8590,4812,8170,5296,8749,5454,8692,5645,7936,5479,7739,5684,7260,5811,7275,5957,6941,6365,7122,6463,7026,6376,6849,6033,6808,6109,6464,6188,6355,6289,6582,6518,6537,6855,5877,7138,5941,7205,5578,6823,5080,7081,4892,7024,4575,7189,4545,6760,3926,7062,3879,7480,4067,7342,2887,7002,2785,7481,2137,6664,2071,5872,1344,5300,1109,5219,1013,5557,594,5186,351,4997,428,4928,36,4405,219,4464,405,4122,748,3936,407,3324,422,2901,0,2452,72,2189,1285,2077,1221,1819,1433,2201,1909,1851,2150,1368,2062,1244,2181,1388,3015,1169,3496,767,4048,231,4400,232,4620,44,4662,0,4849,167,5304,519,5438,892,5924,1021,6792],[7492,1939,7807,1992,7692,1648,7028,1574,7237,1976,7492,1939]]},{"id":"340000","code":"340000","name":"安徽","short":"皖","capital":"合肥","region":"华东","ox":721.89,"oy":452.27,"bw":92.65,"bh":112.59,"rings":[[2849,1354,2939,1631,2131,2128,1701,1500,1151,1438,997,1878,1150,1873,1049,2103,1233,2509,721,2750,706,3592,5,3668,0,3984,602,4226,670,4817,1058,4814,1492,5153,1971,4734,1869,4894,2128,5624,2165,6416,1425,6816,1238,7236,1274,7564,1719,7980,1919,7829,2631,8177,2159,8968,2476,9309,2513,9768,2845,9978,3072,10820,3354,10858,3836,10529,4008,10132,4481,10364,4117,10947,4246,11259,4945,10843,4838,10585,5083,10341,5176,10538,5477,10464,5792,11015,6665,10926,6956,11088,6962,11247,7302,11193,7266,11070,7612,10932,7859,10618,8234,9899,8089,9065,8213,8946,8697,9034,9046,8794,8665,8317,8922,8106,9034,8170,9265,7299,9265,7104,8766,7021,8649,6750,7645,7055,7479,6867,7700,6676,7640,6162,7465,6052,7235,6159,7317,6012,6984,5981,6922,5767,6636,5604,6649,5272,6826,4980,7064,4911,7135,4631,7070,4314,6886,4319,6811,4092,7427,3992,7793,4257,8009,3875,7855,3401,7517,3153,7205,3195,7046,3452,7106,3707,6419,3844,6153,3586,6214,3304,5990,2827,5685,2997,5484,2819,5601,2197,5708,2220,5727,1626,4997,1779,4952,1375,4689,1096,4594,1207,4475,1050,3896,1104,3570,920,3410,437,3158,467,2284,0,1985,179,1953,447,2377,838,2752,793,2693,1126,2849,1354]]},{"id":"350000","code":"350000","name":"福建","short":"闽","capital":"福州","region":"华东","ox":758.55,"oy":587.76,"bw":84.76,"bh":108.51,"rings":[[6331,7284,6327,7087,6194,7172,6069,7047,6230,6853,6065,6680,6394,6735,6326,6905,6546,6949,6546,7158,6504,6693,6796,6793,6988,6562,6478,6327,6601,6129,6883,6216,6859,5973,7053,6008,7051,6190,7146,6107,7284,6260,7315,6076,7390,6314,7500,5999,7719,6128,7883,5970,7653,5528,7477,5722,7498,5983,7059,5697,7287,5544,7418,4792,7132,4480,7243,4253,7758,3974,7498,3830,7357,3515,6933,3491,7068,3237,7504,3360,7591,3028,7827,3027,7454,3634,8020,3292,7962,2941,7781,2821,8113,2670,8148,2255,8476,2085,7991,1505,7079,1926,6645,1164,6076,1816,5573,1717,5365,1830,5051,848,4866,752,4921,137,4740,0,4324,224,4180,123,3991,306,4110,583,3192,1034,3010,1385,2538,1036,2103,1340,2164,1573,2008,1773,1636,1950,2053,2651,1873,3100,1177,3457,959,3793,1183,4813,1013,4749,832,5022,823,5306,1030,5411,832,5770,389,6051,505,6219,300,6410,277,7270,0,7546,183,7881,90,8093,511,8290,752,8203,878,8375,1158,8155,1137,8322,1497,8724,2055,8546,1971,8800,2549,9546,2442,9814,2600,10260,3106,10851,3331,10848,3648,10732,3691,10461,3894,10441,3986,10037,4222,9943,4853,9051,4590,8755,4691,8403,4951,8497,5461,8214,5690,8376,5956,7769,5659,7661,6328,7488,6171,7390,6331,7284]]},{"id":"360000","code":"360000","name":"江西","short":"赣","capital":"南昌","region":"华东","ox":708.7,"oy":553.59,"bw":92.62,"bh":128.27,"rings":[[8396,1152,7984,794,7111,883,6796,331,6495,405,6401,208,6157,453,6264,710,5565,1127,5402,853,5799,231,5326,0,5155,397,4673,725,4460,660,3989,948,3502,717,3210,771,2834,1310,2493,1195,2610,1577,2305,1469,2060,1709,2227,1717,2144,1877,1446,2108,1033,2058,956,2358,602,2458,414,2728,486,3069,852,3279,778,3894,1047,4035,969,4159,1148,4396,679,4794,769,5077,260,5342,308,5639,0,6234,112,6671,603,6540,463,7198,795,7498,645,7830,722,8141,1228,8307,1025,9260,1444,9079,1567,9207,1201,9409,1023,10173,1176,10476,1132,10831,1357,10982,1310,11188,2029,11025,2323,10775,2755,11050,2663,11284,2774,11388,2435,11520,2131,11830,2053,12286,1731,12448,2241,12827,2748,12587,2841,12706,2872,12519,3162,12594,3222,12368,4200,11974,4812,12461,5118,12389,4898,11998,5184,11495,4985,10962,5262,10687,5285,9826,5490,9635,5374,9467,5817,9187,6014,8827,5808,8722,5817,8438,5997,8165,6168,8229,6213,7990,5998,7832,5943,7209,6162,6874,6858,6516,7037,6068,6621,5366,6993,5189,7148,4989,7088,4756,7522,4452,7995,4801,8176,4450,9095,4000,8976,3722,9262,3446,8894,2399,8188,1842,8208,1414,8397,1372,8396,1152]]},{"id":"370000","code":"370000","name":"山东","short":"鲁","capital":"济南","region":"华东","ox":716.14,"oy":367.05,"bw":129.5,"bh":88.44,"rings":[[2859,8522,2919,7934,3509,7817,3508,7685,4076,8210,4324,8814,4646,8432,4977,8658,5214,8445,5431,8482,5378,8187,5650,8091,6104,8337,6143,8705,6489,8578,6560,8019,7111,7791,6990,7758,7156,7096,7807,6778,8040,6849,8378,5635,8822,5459,8783,5185,8951,5264,8985,4895,9370,4611,8997,4370,9075,4127,9392,4096,9311,4448,10023,4155,9898,3573,10103,3365,10213,3575,10339,3328,10341,3145,10080,3022,10410,3073,11237,2346,11116,2469,11425,2559,11362,2393,11947,1924,12040,2115,12183,1938,12277,2141,12867,1902,12900,1584,12702,1620,12695,1411,12909,1231,12781,1012,12950,702,12032,818,11959,560,11019,986,10643,628,10364,772,10174,481,9451,346,8642,793,8721,1094,8096,1600,8217,1839,8000,2169,7298,2313,7034,1977,6785,2070,6502,1489,6610,1213,7010,1113,6993,639,6787,784,6256,130,5778,199,5679,401,4730,194,4492,0,4234,546,3993,645,3845,1101,2766,1245,2231,2161,2036,1938,1871,2187,1921,2450,1480,2555,1106,3797,765,3942,467,4569,916,5313,740,6130,2000,5278,1948,5605,1710,5655,1379,6159,1025,6296,848,6813,400,7028,0,7895,204,8062,730,8027,823,8279,1135,8337,1416,8844,2184,8654,2657,8745,2859,8522]]},{"id":"410000","code":"410000","name":"河南","short":"豫","capital":"郑州","region":"中南","ox":637.88,"oy":418.34,"bw":113.6,"bh":108.93,"rings":[[4569,9147,5464,8907,5892,9235,6428,8873,6480,9608,6760,10125,6949,10086,7026,10311,7381,10048,7588,10253,8127,10180,8124,10635,8269,10572,8645,10814,9127,10654,9231,10426,9535,10893,9826,10209,10135,9938,10523,9900,10529,9017,10270,8287,10372,8127,9893,8546,9459,8208,9071,8210,9003,7619,8401,7377,8405,7061,8897,7104,9128,6942,9122,6143,9633,5902,9450,5497,9550,5266,9398,5271,9468,4912,9687,4782,10102,4893,10367,5377,10531,5521,10720,5453,11360,5002,11094,4519,11153,4187,10778,4231,10354,3840,10386,3573,10208,3525,9171,3692,8961,3208,8648,3151,8556,2899,8030,2934,7826,2766,8149,1997,8674,1685,8851,1168,9204,1031,9536,527,9774,477,9826,149,8619,1035,8705,140,8458,351,8102,113,7770,504,7747,306,7186,411,6731,144,5638,0,5619,1193,5485,1248,5596,1658,5455,1615,5393,1903,5070,2168,4863,2136,4773,2407,4538,2359,4542,2508,4170,2738,2893,2669,2934,3173,2486,3190,2093,3712,1346,3840,949,4040,794,4307,0,4386,255,4967,152,5185,527,5349,445,5665,597,5849,463,5970,1256,6621,1265,7349,1799,7878,1809,8154,2230,8406,2442,8768,2551,8668,3535,9180,3861,9282,4246,9067,4569,9147]]},{"id":"420000","code":"420000","name":"湖北","short":"鄂","capital":"武汉","region":"中南","ox":605.6,"oy":491.89,"bw":147.02,"bh":94.29,"rings":[[4616,180,4450,0,4001,380,3754,48,3570,237,3111,280,2009,82,1692,374,2350,535,2361,951,2724,924,3050,1176,3152,1473,2816,1684,2102,1600,1882,2284,2135,2709,2109,3566,2381,3612,2390,3954,3133,4228,3314,4784,3172,4949,3284,5190,3135,5601,2772,5394,1803,6366,1684,6049,1402,6307,1199,6013,774,6399,540,6192,322,6467,55,6423,17,6684,366,6943,271,7777,0,7885,263,8175,545,7836,619,8203,1026,8378,1086,9000,1348,8817,1520,9335,1782,9429,1741,9205,1916,9058,2047,8501,2194,8280,2578,8287,2680,7963,3311,7859,3821,8183,4172,7986,4316,7836,4026,7546,4127,7370,4006,7226,4415,7253,4665,7029,4822,7161,5416,7176,5722,7443,6512,7417,7039,7734,7029,7874,7372,7899,7484,8210,7746,7928,8235,7963,8596,7509,8696,7745,8834,7531,8648,7919,8744,8212,8939,8085,8994,8270,9119,8235,9852,7275,9839,7666,10058,7627,10221,7849,10027,7992,10279,8142,10040,8602,10204,8644,10239,8975,10462,8893,10634,9048,10913,8628,11267,8529,11344,8228,11757,8278,12455,8048,12538,7887,12371,7879,12615,7639,12920,7747,12803,7366,13145,7480,13520,6941,13812,6887,14300,7119,14702,6858,14475,6015,14142,5806,14106,5347,13789,5006,13937,4586,14298,4337,13871,3953,13715,4050,13462,3854,13349,4018,12894,3475,12669,3529,12460,3070,12355,3298,11874,3459,11498,3217,11353,3279,11356,2825,10817,2898,10609,2692,10255,2956,9781,2457,9657,1517,9121,1880,8693,1552,7833,1792,7475,1711,7090,1926,5779,1312,5671,1413,5459,1051,5038,799,4867,287,4616,180]]},{"id":"430000","code":"430000","name":"湖南","short":"湘","capital":"长沙","region":"中南","ox":615.91,"oy":562.59,"bw":108.47,"bh":120.62,"rings":[[6698,11788,6966,11504,6854,11282,6953,10788,7907,10828,8189,11330,8375,11315,8612,11229,8521,10759,8643,10624,8300,10537,8260,10344,8406,10424,9013,9891,9720,10293,10175,10203,10411,9931,10456,9575,10297,9363,10486,8918,10422,8650,10847,8306,10723,8179,10305,8360,10508,7406,10001,7241,9925,6930,10075,6598,9743,6298,9882,5640,9391,5771,9280,5334,9588,4739,9540,4442,10049,4177,9958,3894,10306,3664,10411,3326,10058,2994,10132,2379,9766,2169,9683,1931,9208,1905,9173,1573,9009,1531,9248,1072,8997,922,9190,779,9027,557,8808,596,8821,204,7963,1200,7908,1015,7713,1142,7617,849,7803,461,7665,674,7490,463,7204,893,6715,858,6453,1139,6341,828,5998,804,6008,663,5481,347,4691,373,4385,106,3439,0,3384,182,2975,155,3096,300,2995,475,3285,766,3141,916,2790,1113,2280,789,1819,846,1606,949,1547,1217,1163,1210,1016,1430,885,1988,710,2134,690,2441,846,2532,721,3132,835,3193,642,3451,891,3566,816,4110,1054,4255,902,4781,1059,4778,917,4959,1066,5476,1272,5560,1266,5811,965,6146,654,6104,590,6356,0,6942,304,7080,472,6879,736,6952,872,6762,1331,6774,1511,7185,1284,7317,1429,7342,1480,7639,1613,7605,1002,7761,1262,8118,1013,8585,1178,8720,1402,8599,1513,9008,1400,9174,1956,9294,1878,9542,2129,9536,2059,9274,2409,8815,2667,8861,2613,9128,2843,9093,3004,9305,3661,8440,4114,8588,4314,8508,4369,8283,4984,8499,4854,9216,4989,9405,5455,9387,5123,9718,5190,10155,4582,10993,4546,11408,4814,11458,4805,11260,5135,10982,5539,11242,5558,12031,5800,12062,6056,11726,6698,11788]]},{"id":"440000","code":"440000","name":"广东","short":"粤","capital":"广州","region":"中南","ox":639.21,"oy":661.34,"bw":150.4,"bh":120.48,"rings":[[7926,7223,8103,6708,7919,6784,8238,6485,8074,6077,8185,6044,8571,6658,9541,6217,9831,6550,10066,6361,9908,6222,9988,6093,9804,6074,10174,5745,10293,6189,10588,6255,10924,5669,11150,5579,11462,5639,11571,5833,11976,5863,12022,5633,11883,5643,12087,5377,12476,5624,13390,5042,13809,5040,13881,4580,14352,4376,14274,4136,14440,3699,15040,3492,14464,2761,14368,2318,14483,2188,13905,1441,13989,1188,13431,1365,13071,964,13092,797,12812,1016,12686,844,12445,932,12074,780,11847,1223,12067,1614,11761,1686,11149,1200,10171,1593,10111,1819,9822,1745,9790,1932,9697,1812,9244,2073,8680,1673,9003,1512,9080,1055,9384,745,9723,613,9612,509,9704,275,9272,0,8308,460,8197,43,7967,77,7844,329,7390,418,6638,29,6075,549,5929,469,5969,662,6313,749,6190,884,6281,1354,6045,1440,5858,1455,5576,953,4623,914,4524,1407,4635,1629,4205,2044,4501,2792,4150,3066,4315,3584,4079,4001,3759,3965,3708,4397,3449,4442,3294,4800,3224,5212,3424,5747,3291,6080,3023,6408,2697,6468,2702,6647,2085,6885,2080,7090,1969,7066,2197,7482,1915,7635,1987,7736,1302,7724,1427,8380,616,8449,466,8924,111,9055,217,9401,467,9447,170,9643,0,10565,219,11228,536,11531,606,12048,1531,11952,1917,11579,1728,11021,1572,11025,1559,10733,1111,10592,1145,10243,1218,10315,1575,9913,1998,9835,2332,9467,3331,9163,3347,9309,3663,9080,4092,9055,4257,8830,4417,8939,4748,8811,4856,8736,4697,8579,5058,8370,5285,8555,5522,8527,5698,8302,6123,8369,6396,7990,6694,8147,6968,7492,7386,8018,7969,7520,7926,7223],[1788,10146,1344,10150,1142,10489,1568,10352,1844,10485,1788,10146]]},{"id":"450000","code":"450000","name":"广西","short":"桂","capital":"南宁","region":"中南","ox":531.32,"oy":645.43,"bw":152.9,"bh":112.01,"rings":[[9919,945,9666,1620,9395,1506,9283,1613,9172,1477,8784,1695,9147,1666,9060,1872,9181,2042,9058,2132,8638,2116,8568,1893,8380,1912,8227,2209,8278,2615,7708,2129,7523,2370,7343,2344,7265,2867,6565,3076,6348,2658,5978,2895,5866,2500,5660,2486,5424,2034,4951,2421,4983,2875,3328,3518,3389,3947,3093,4231,2925,4030,2029,3850,1889,3581,1566,3586,1455,3440,1185,3611,1096,3900,483,4275,81,4022,0,4195,172,4701,440,4931,555,4626,1244,4725,1556,5505,1678,5383,2029,5601,2233,5334,2346,5565,2838,5544,2891,5362,3157,5432,3452,5894,3356,6578,3070,6849,2766,6678,2331,6951,2459,7120,2105,7326,2207,7697,2514,7703,2834,8021,3396,7857,3836,8139,4161,7939,4809,8243,4556,8749,4354,8693,4248,9017,4257,9258,4520,9441,4552,10100,4633,9993,5177,10115,5304,10184,5221,10396,5692,10640,5833,10570,5950,10856,6184,10723,6333,10881,6988,10721,7192,10971,7507,11018,7777,10809,7762,11047,8304,10890,8572,10606,8827,10766,9648,10810,9451,11059,9664,11201,10475,11060,10635,10790,11006,10992,10900,10647,11255,10515,11296,10128,12216,9971,12091,9315,12776,9327,12704,9226,12986,9074,12758,8657,12869,8681,12874,8477,13491,8238,13485,8060,13812,7999,14080,7671,14213,7338,14013,6804,14083,6392,14238,6034,14497,5989,14548,5556,14868,5593,15104,5176,14934,4770,15290,4384,14979,3764,15156,3505,14514,3442,14258,3779,14016,3748,13997,2959,13593,2698,13263,2976,13273,3174,13004,3124,13040,2710,13648,1872,13581,1435,13913,1104,13447,1122,13312,933,13442,215,12827,0,12772,224,12572,304,12119,157,11463,1022,11301,810,11071,845,11125,578,10867,532,10517,990,10525,1281,10336,1259,10414,1011,10220,892,9919,945]]},{"id":"460000","code":"460000","name":"海南","short":"琼","capital":"海口","region":"中南","ox":618.31,"oy":782.53,"bw":52.1,"bh":44.98,"rings":[[3135,365,2189,445,1865,761,1442,683,1136,1159,98,1972,0,2427,166,3840,681,3973,826,4189,1178,4154,2221,4498,2571,4373,2633,4054,3242,3945,3593,3420,4131,3300,4433,1906,5210,1151,5152,825,4954,282,4618,264,4347,0,4017,212,3574,163,3135,365]]},{"id":"500000","code":"500000","name":"重庆","short":"渝","capital":"重庆","region":"西南","ox":547.42,"oy":517.7,"bw":91.31,"bh":89.57,"rings":[[2069,8339,2320,8293,2251,7650,2598,8055,2437,8424,2715,8497,2803,8145,3013,8103,2926,7810,3241,7759,3290,7520,3656,7544,3738,7780,3997,7581,4102,7365,3951,7222,4013,6828,4334,6746,4374,6897,4587,6911,4677,6777,4919,7307,5300,7013,5752,7015,5925,7627,5831,7907,6420,8015,6335,8641,6504,8655,6442,8383,6571,8279,6714,8442,6650,8886,7327,8957,7435,8432,7740,8055,7490,7940,7677,7740,7549,7387,7695,7022,7337,6754,7165,6236,6903,6420,6843,5797,6437,5623,6362,5255,6081,5595,5818,5305,6089,5196,6184,4362,5835,4103,5872,3842,6140,3886,6357,3611,6591,3819,7017,3433,7219,3726,7502,3469,7620,3786,8590,2813,8953,3020,9102,2609,8990,2368,9131,2203,8951,1648,8208,1373,8199,1031,7363,1032,7345,848,6980,570,5893,0,5689,23,5796,253,5448,542,5975,995,6004,1202,5640,1558,5357,1613,5358,1962,5090,2159,5144,2609,4928,2757,5031,2935,4770,3202,4555,3003,4381,3149,4076,3118,3972,3341,4151,3552,3312,4927,3170,4830,2700,4968,2364,4328,1749,4626,1556,4319,912,4094,779,4486,599,4435,671,4582,433,4712,846,5011,820,5296,0,6105,262,6398,222,6598,747,6649,948,7434,1339,7346,1433,7496,1735,7496,2069,8339]]},{"id":"510000","code":"510000","name":"四川","short":"川/蜀","capital":"成都","region":"西南","ox":401.76,"oy":469.05,"bw":205.71,"bh":186.48,"rings":[[6484,16039,6407,16426,6845,16754,6879,17113,7126,17021,6880,17405,7342,17873,7315,18237,7526,18256,7708,18648,7898,18521,8250,18614,8531,18302,9184,17985,9315,18111,9236,18236,9450,18330,9793,17996,10029,17984,10144,17577,9853,16777,9847,15915,9964,15680,10355,15655,11044,14831,11180,14424,10942,14273,11224,13861,11362,13797,11472,13936,11815,13678,11636,13209,11773,12893,11969,13043,12879,12993,12559,13193,12598,13625,12945,13854,12828,13940,12917,14139,12636,14278,13156,14750,13768,14587,14105,14180,14510,14402,14585,15054,14974,14909,15199,15137,16525,14806,16563,14485,16322,14082,15719,14122,15578,13706,15221,13668,15187,13236,15420,13013,15689,13059,15843,12687,16646,13306,16301,12361,15999,12361,15905,12210,15515,12298,15313,11514,14862,11514,14828,11263,14622,11173,14550,10882,15386,10161,15412,9876,14999,9577,15237,9447,15165,9300,15346,9351,15541,8938,16191,9228,16315,9491,16930,9192,17266,9833,17609,9830,17724,9687,17882,9785,18717,8416,18538,8206,18642,7983,18947,8014,19121,7867,19336,8067,19598,7799,19494,7621,19710,7473,19656,7024,19924,6827,19924,6478,20206,6423,20571,6066,20542,5860,20015,5407,20218,5351,20164,5176,20363,5118,20204,4938,20451,4765,19958,4716,19485,5021,18919,4472,18505,4436,18461,4185,18055,4422,17807,4171,17774,3798,17162,3740,16594,4026,16038,3801,15896,3476,15079,3855,14840,3337,14682,3459,14807,3781,14324,4042,13330,3941,12693,3547,12683,3306,12937,3154,12775,3092,12717,2491,12930,2442,12568,2265,12492,1825,12257,1628,11304,1634,11305,1343,11006,1482,10667,1336,10594,819,10702,719,10232,184,9661,544,9748,698,9366,673,9279,931,8816,933,9174,1483,9174,1753,9409,1900,9375,2111,8877,2350,8886,2607,8737,2456,8681,2642,8195,2821,8104,2480,8437,2099,8263,1734,7920,2215,8043,2453,7843,2850,7587,2557,7388,2716,7243,2465,6926,2545,7019,2954,6897,3246,7097,3445,6937,3807,6518,3928,6082,3735,5985,4072,5592,3591,5512,3663,5557,3535,5298,3554,5191,3855,5014,3770,5061,3329,4635,2838,4307,3526,3703,3116,3504,3153,3392,2792,2793,2496,2630,2201,2496,1356,2078,833,2098,342,1436,211,1216,0,784,155,684,617,258,653,205,810,246,1293,436,1371,469,1625,826,1778,301,2285,337,2693,0,2877,205,3438,1504,4235,1488,4477,1852,5013,1788,5404,2599,6487,2369,6754,2141,6538,2043,6863,2395,7327,2362,7587,2647,7861,2543,8005,2742,9740,2564,10300,2738,11283,2727,13116,3101,13682,3202,12872,3843,12235,3898,12563,4666,13444,4609,13703,4346,13826,4609,14374,4873,14491,4864,14797,5134,14491,5326,14628,5602,14386,6240,15978,6484,16039]]},{"id":"520000","code":"520000","name":"贵州","short":"黔/贵","capital":"贵阳","region":"西南","ox":514.18,"oy":585.47,"bw":116.86,"bh":102.71,"rings":[[10984,1472,10759,1655,10651,2180,10042,2140,10038,1665,9895,1502,9766,1605,9828,1877,9659,1864,9744,1238,9155,1130,9249,849,9076,238,8623,236,8242,529,8001,0,7911,133,7412,6,7281,261,7426,588,7321,803,7062,1003,6980,767,6614,743,6565,982,6250,1033,6337,1326,6127,1368,6039,1720,5761,1647,5922,1278,5575,873,5644,1516,5447,1462,5403,1664,4601,1045,4447,1418,4177,1372,3945,1594,3979,2027,4336,2064,4477,2480,4960,2378,5198,2590,5341,3052,5159,3258,3957,3495,3731,3267,3431,3314,3099,4165,2875,4052,2491,4336,2400,4197,1842,4252,1500,3938,1125,4391,658,3984,524,4344,0,4827,338,5078,196,5425,304,5892,504,6057,903,6055,1011,5782,1468,5824,1609,5628,2118,6369,1837,6643,1368,7985,1603,8146,1614,8376,1858,8261,1830,8536,2022,8770,2395,8904,2388,9049,2250,8950,1979,9290,2167,9434,1796,10018,2197,10271,2810,9896,2899,9606,3170,9435,3280,9582,3603,9577,3743,9846,4639,10025,4807,10227,5103,9942,5042,9514,6697,8871,6665,8417,7139,8029,7374,8482,7580,8496,7692,8890,8062,8654,8150,8922,8272,8842,8279,9072,8433,9088,8979,8863,9058,8339,9237,8366,9343,8150,9992,8611,9941,8205,10094,7908,10282,7889,10352,8112,10773,8127,10896,8037,10774,7867,10862,7661,10498,7690,10886,7472,10997,7609,11109,7501,11380,7615,11686,6720,11574,6312,11350,6433,11186,6298,11435,5830,11175,5473,11568,5319,11456,5029,11684,4897,11604,4652,11389,4449,11045,4474,10909,4664,10645,4592,10476,4792,10172,4654,10762,4068,10826,3817,11138,3858,11438,3524,11445,3273,11166,3055,11090,2671,11231,2490,11075,2493,11226,1968,11004,1877,10984,1472]]},{"id":"530000","code":"530000","name":"云南","short":"滇/云","capital":"昆明","region":"西南","ox":390.0,"oy":582.38,"bw":175.85,"bh":181.02,"rings":[[15761,3721,15686,3069,15281,2847,14944,3254,14205,3333,13812,2945,14093,2806,14097,2458,13721,2156,13735,1860,14055,1660,13145,1710,12949,1560,12812,1876,12991,2345,12648,2603,12538,2464,12400,2528,12119,2940,12356,3091,12220,3498,11531,4322,11140,4347,11023,4582,11029,5444,11320,6244,11159,6719,10969,6662,10626,6997,10412,6903,10491,6778,10360,6652,9707,6969,9426,7281,9074,7188,8884,7315,8837,7068,8408,6779,8518,6540,8105,6208,8302,5688,8055,5780,8021,5421,7583,5093,7660,4706,7416,4645,6778,3053,6503,3295,6310,3158,6071,3473,6049,3158,5785,3041,5522,2493,5785,2369,5842,2111,5074,1230,5019,902,4378,1539,4277,2349,4151,2239,3903,1783,3910,0,3655,21,3694,401,3491,724,3588,852,3353,914,3254,458,2938,528,3021,1024,2839,1174,3075,1904,3003,2166,2363,2381,2233,1769,2052,1814,2146,2080,1884,2287,1898,2939,2135,3697,2357,3646,2403,3389,2897,3671,2913,5753,2645,6585,2723,6841,2435,6842,2657,7441,2519,7558,2304,7451,1834,8082,1559,7892,1456,8415,1037,8756,844,8618,575,9021,692,9551,173,9749,89,10400,373,10399,496,11049,0,11537,227,11744,1165,11269,2093,11237,2181,11350,2763,11229,2793,11347,2325,11624,2294,11975,2526,12032,2702,12400,2532,12565,2737,12830,2661,13305,3088,13601,3589,13537,3949,13697,4004,14008,3766,13975,3788,14175,3471,14393,3579,14936,3297,15140,3070,15641,4745,15967,4746,16733,5038,16756,5015,17185,5228,17277,5656,17152,5943,17343,7105,16690,7135,17155,7293,17295,7114,17484,7318,17726,7265,17873,7403,18001,7915,17858,8392,18102,8544,17878,8334,17687,8403,17146,8559,17081,8398,16828,8455,16603,8123,16297,8021,15700,8186,15608,8296,15189,8510,15128,8763,15403,9066,15251,9527,15348,9777,14784,10042,14582,11096,15338,11626,14827,11713,14544,11955,14668,12131,15023,12369,14582,13026,15233,13347,14563,13644,14492,13665,14721,13876,14828,14331,14487,14622,14532,14845,14312,14760,13907,14920,13790,15648,13568,15826,13290,16272,13741,16374,13458,16592,13424,16464,13255,16899,12982,17202,13154,17488,12882,17585,12198,17184,11669,16777,11887,16713,11777,16478,11869,16366,11638,16161,11906,15811,11688,15689,11810,15377,11029,14688,10930,14572,11236,14304,11006,14133,10499,14585,9743,14398,9599,14668,9259,14806,9358,14814,9212,14441,9078,14248,8845,14276,8569,14032,8684,14022,8454,13787,8294,14501,6551,14027,5937,13887,6132,13429,6091,13321,6364,12832,6325,12615,5733,12756,5387,12418,5135,12942,4652,13076,4292,13543,4700,13918,4246,14401,4608,14818,4506,14910,4645,15294,4360,15518,4474,15761,3721]]},{"id":"540000","code":"540000","name":"西藏","short":"藏","capital":"拉萨","region":"西南","ox":57.26,"oy":392.11,"bw":371.92,"bh":231.91,"rings":[[21681,1840,20417,1019,20115,1135,19844,703,19477,605,18069,670,17743,433,17325,639,15984,598,15598,699,15243,1292,14577,1373,14398,1567,13867,1145,13473,1150,12336,1380,12307,1551,11747,1694,11509,1498,10802,1547,9976,1217,9797,979,9833,564,9412,537,8999,258,8738,350,8677,549,8115,667,8041,951,7402,999,7103,928,6908,604,6641,621,6481,377,6196,531,5358,0,4989,264,5104,496,4436,731,3725,1841,2370,1617,2017,2144,1517,2169,1515,2996,1303,3121,1849,4364,1785,5715,1289,6112,1031,6131,783,5718,843,5214,127,5423,190,5982,0,6130,20,6333,435,6867,167,7092,386,7639,101,7868,115,8284,248,8293,480,9101,892,9264,1082,9076,1349,9484,1508,9399,1868,9835,1977,10395,2973,10982,3594,11626,3650,12172,3877,12237,3975,11935,4228,11891,4390,11419,4615,11592,4792,11456,5390,11884,5611,11882,5603,12521,6253,12930,6619,13630,6846,13642,7372,14066,7794,15070,8455,14871,8820,15034,8960,15170,8856,15950,9166,16097,9253,16386,9509,16447,9881,16899,10306,16743,10546,16906,10266,17486,10739,17743,11029,17681,11151,17870,11428,17656,11765,18780,12006,18790,12003,18410,12234,18279,12231,18717,12551,18936,12926,18556,13176,18606,14067,19425,14760,19443,15019,19617,15257,19376,15779,19609,15900,19419,16375,19457,16891,19239,17102,19371,17261,19898,16921,20700,17216,21332,17658,21031,17524,20789,17915,20118,18538,19562,19124,19304,19556,19605,19748,19512,20066,19643,20202,19873,20588,20019,20817,19929,21370,20502,21535,20550,21978,20135,22259,20298,22507,20583,22357,20722,22529,20867,22351,21351,22588,21548,23155,21607,23235,21805,23320,22081,23079,22421,23167,23001,24242,22919,25128,23191,26542,23030,26640,22720,27573,21897,28056,21916,28789,21663,29607,21303,29865,20875,30735,20614,31018,20858,31576,20840,31602,21040,31854,21014,32324,21530,32993,21887,33007,22049,33503,21705,33659,21786,33733,21499,33535,21354,33648,20995,33989,20814,34123,20346,34344,20410,34534,20857,34745,20791,35157,21314,35419,21108,35325,20842,35507,20797,35636,21408,36101,21326,36356,20994,36137,20558,36113,20202,36294,20051,36211,19556,36527,19486,36626,19942,36861,19880,36764,19752,36967,19428,36884,19134,37184,19028,37014,17995,37192,17434,36993,15699,37096,15555,36811,15281,36845,15021,36492,14557,36590,14233,36818,14449,37048,14181,36237,13099,36301,12708,35937,12172,35953,11930,35205,11474,34411,11318,34492,11868,34257,11913,34235,12404,33677,12379,33404,12589,33144,12459,33307,13133,33185,13224,32629,12964,32512,12616,32138,12619,32215,13091,32019,13288,31742,12780,31587,12765,31420,13054,31090,12797,30857,12847,30624,12352,30807,12261,30813,11923,30581,11921,30484,11522,30177,11584,30527,11465,30459,11347,29902,11249,29417,10616,28939,10901,28617,10886,28489,11058,27992,10930,27765,10650,27365,10836,26908,10360,26589,10404,26528,10144,25133,10007,25084,9671,24618,9714,23941,8988,23750,9039,23395,8818,23231,8953,22450,8697,21482,7813,21350,7190,21218,7135,21302,7010,20838,6373,21203,6156,21345,5824,21329,5128,21211,5037,21514,4741,21411,4472,21033,4474,21131,4011,20922,3706,21083,3612,21052,3413,21564,3216,21471,3059,21754,2411,21320,2323,21122,1927,21681,1840]]},{"id":"610000","code":"610000","name":"陕西","short":"陕/秦","capital":"西安","region":"西北","ox":550.74,"oy":349.16,"bw":100.45,"bh":178.86,"rings":[[8715,11303,8436,11110,8416,10686,8995,8958,8643,7775,8678,6829,8488,6626,8426,5849,8924,5222,8825,4894,9069,4601,8940,4130,8551,3734,8498,3202,9134,2422,9196,1404,9450,1176,9601,629,9279,426,9375,0,8939,236,8688,749,8374,520,8150,696,7742,393,7872,777,7450,954,7342,825,7394,1194,7129,1319,6918,1787,6450,2153,6506,2317,5992,2777,5815,3295,6056,3701,5834,3937,5588,3664,5586,4486,4483,4663,4294,4607,4210,4299,3693,4085,3590,4342,3382,4371,3067,4730,3168,4778,2989,5347,3102,6303,4151,6642,4429,6990,4610,7048,4709,6893,5139,7349,5223,7229,5476,7422,5571,8240,5251,8587,5498,9805,4326,10032,3958,9893,3797,10048,4187,10592,3657,10675,3588,10810,3164,10770,3106,10886,2471,10418,1831,10453,1733,10680,1902,11160,1441,11597,2171,12059,2060,12344,1831,12238,1941,12558,1635,13105,1954,13850,1883,13994,1711,13771,1241,13926,849,13781,725,13910,592,14308,378,14303,542,14583,846,14702,763,15177,255,15438,0,15366,121,15787,998,15465,1140,15789,1696,16015,2264,15729,2876,15786,2909,16160,3253,16466,3564,16174,3607,16425,4021,16461,4588,17009,5060,16705,5483,16700,7013,17701,7032,17886,7595,17839,7621,16982,7369,16557,7588,15873,8302,15957,8638,15746,8429,15307,7847,15224,7836,14808,7179,14647,7308,14448,7496,14354,8815,14548,9056,14510,9174,14314,9487,14653,10045,14094,9971,13538,9177,12887,9312,12766,9160,12582,9241,12266,8867,12102,8970,11884,8715,11303]]},{"id":"620000","code":"620000","name":"甘肃","short":"甘/陇","capital":"兰州","region":"西北","ox":328.8,"oy":275.26,"bw":277.65,"bh":234.75,"rings":[[23939,16371,23815,16483,23943,17213,23702,17500,23359,17055,23255,17228,23180,16999,22866,17114,23135,16921,22873,16813,22781,16942,22501,16474,22621,16414,22132,16412,22037,16205,21953,16265,21886,15722,22185,15464,21914,14678,21721,14550,21631,14218,21864,13991,21592,13785,21568,13554,21202,13452,20894,12986,20654,13086,20728,12621,19871,12620,19018,11773,18547,11579,18489,11063,18776,10915,18582,10352,19344,9822,19922,9053,19677,8353,19751,8078,19354,7981,18495,8261,17917,8773,16990,8402,15935,8746,16329,9204,15808,9709,15509,9710,15061,9419,14851,9037,14908,8864,14463,9014,14244,8826,14291,7971,13714,7958,13726,7776,13436,7700,13327,7297,12631,6868,11998,6776,12681,6525,13257,5958,13417,4976,13141,4532,12512,4443,12325,4627,11683,4565,11539,4966,11360,4716,11030,4869,11035,5092,10837,4705,10671,4753,10757,4915,10273,5130,10308,4341,9742,3899,9238,3090,9627,2632,8733,0,7462,47,6985,282,6750,639,7027,1157,6851,1295,6883,1667,5960,2010,5470,2482,5250,1993,4782,2182,4571,2454,4212,2489,3265,3271,2877,3760,2742,4232,1351,4277,580,6583,0,7140,63,7599,1283,7429,1322,8014,2246,8121,2493,8278,2262,8388,2457,8607,3286,8603,3511,9559,4229,9455,5015,9847,5460,9643,6029,10210,6361,10301,6581,10023,7060,10171,7110,9601,7307,9571,7350,9340,7791,9406,7653,8687,7742,8037,8384,8157,9577,9106,9846,8912,9934,8586,10431,8839,10846,8514,11318,8845,11245,8964,12189,10029,12959,10560,13034,10346,12772,10019,12885,9908,13486,10487,14297,10740,14250,11112,14763,11506,15032,11644,15204,11480,15440,11576,15801,11979,16121,11829,16285,12381,17194,13269,16925,13311,16853,13557,17311,14021,17101,14146,17374,14472,17508,15009,17890,15276,17560,15573,17710,15662,17659,16145,17253,16168,17358,16820,16866,16679,16760,17010,16486,17033,16456,17305,16667,17590,16105,18008,16051,18230,15780,18254,15792,18900,16183,19092,16359,19439,16156,19622,16011,19569,15795,19978,15612,19874,15367,20023,15054,19722,14013,19296,13774,19435,13658,19743,14046,20407,14329,20524,14337,20941,15094,20936,15150,21326,15630,21170,15734,21478,15400,21860,15563,22239,15696,22054,15977,22022,16033,21835,16182,21986,16298,21570,16671,21490,16705,21280,16471,21133,16470,20862,16112,20313,16575,20311,16663,20052,17044,20078,16957,19924,17528,19564,17999,20099,17890,20198,17963,20716,18302,20862,18601,20723,18600,21013,19553,21007,19788,21205,19864,21645,20226,21822,20014,21871,20071,22472,20233,22534,19959,22776,20289,23124,21064,23459,21330,23348,21485,23475,22103,23160,22038,22735,22361,22835,22857,22691,23040,22092,22736,21973,22572,21694,22786,21699,22919,21301,23043,21172,23435,21317,23905,21161,24077,21385,24148,21241,23829,20495,24135,19949,24025,19629,24254,19735,24365,19450,23635,18988,24096,18551,23927,18071,24025,17844,24665,17808,25300,18277,25358,18161,26345,18029,25991,17439,26152,17284,26520,17423,27639,17275,27695,16726,27537,16577,27445,15978,27765,15631,27670,14813,27417,14620,27333,14739,26902,14284,26804,14439,26623,14381,26345,14032,25296,13694,25062,13178,24083,13215,24135,13603,23955,13558,24147,14145,23920,14164,23676,14543,23944,14721,23918,15178,24496,15252,24720,15559,24697,15921,24539,16022,24628,16309,24373,16472,23939,16371]]},{"id":"630000","code":"630000","name":"青海","short":"青","capital":"西宁","region":"西北","ox":265.65,"oy":349.55,"bw":242.05,"bh":175.61,"rings":[[23797,7504,23688,7043,23415,6717,23626,6592,23168,6128,23240,5882,23508,5840,23439,5669,22599,4952,22435,4401,22116,4550,21755,4147,21519,4051,21347,4215,21078,4078,20565,3683,20612,3311,19801,3058,19200,2479,19087,2590,19348,2917,19274,3131,18504,2600,17559,1535,17632,1416,17160,1085,16746,1410,16248,1157,16160,1483,15892,1677,14698,728,14057,608,13967,1258,14105,1977,13664,1911,13622,2142,13425,2172,13375,2742,12895,2594,12676,2872,12343,2781,11775,2214,11330,2418,10543,2026,9825,2130,9601,1174,8772,1178,8577,959,8808,849,8561,692,7636,585,7597,0,6625,35,6316,249,4425,574,3329,582,2878,927,2342,883,2339,1196,2546,1461,2996,1341,2783,2653,3645,3358,3895,4449,3689,4391,2853,4726,2791,5264,3282,5463,3222,6459,3050,6393,2797,6562,2503,6251,1778,6085,1413,5760,1233,6215,316,6124,289,6410,916,6667,633,7315,725,7472,214,7669,245,7868,84,7962,293,8267,195,8730,572,8728,675,8997,372,9293,491,9384,507,10080,365,10412,0,10629,463,11266,380,11391,511,11446,644,12069,1611,12953,2392,13209,2556,13074,2911,13295,3102,13244,3780,13970,4246,13927,4294,14263,5689,14400,5750,14660,6070,14616,6526,15092,6927,14906,7154,15186,7650,15314,7779,15142,8100,15157,8579,14872,9064,15505,9620,15603,9688,15721,9339,15840,9645,15778,9743,16177,9975,16179,9968,16517,9786,16608,10019,17103,10252,17053,10581,17310,10748,17021,10904,17036,11274,17561,11300,16875,11424,16827,11673,16872,11963,17366,12346,17480,12468,17389,12306,16715,12566,16845,12839,16635,13396,16660,13419,16169,13653,16124,13521,15618,13742,15535,14249,15707,13716,15267,13611,14827,13948,14643,13912,14235,14437,13729,14080,13576,14047,13322,13856,13243,13818,12706,14295,12567,14395,12106,14668,11944,15708,12292,15689,12783,16107,13307,16241,14152,16404,14446,17003,14743,17115,15104,17314,15066,17918,15477,18246,14788,18671,15280,18589,15654,18802,15806,18909,15504,19168,15486,19123,15613,19203,15542,19596,16023,19693,15685,20129,15879,20548,15758,20708,15396,20508,15197,20630,14905,20537,14496,20854,14415,20999,14667,21198,14508,21454,14800,21654,14404,21530,14166,21748,13835,21465,13897,21409,13507,21261,13438,20651,13512,20644,13095,20361,12978,19973,12314,20089,12006,20327,11867,20759,11990,21714,12602,21927,12445,22110,12549,22325,12140,22471,12193,22673,12010,22497,11663,22107,11471,22095,10825,22366,10801,22420,10579,22982,10161,22771,9876,22801,9604,23074,9581,23181,9250,23601,9464,23720,9319,23514,8837,23697,8636,23973,8716,24024,8233,23875,8144,24205,7847,23797,7504]]},{"id":"640000","code":"640000","name":"宁夏","short":"宁","capital":"银川","region":"西北","ox":529.3,"oy":356.89,"bw":57.96,"bh":93.36,"rings":[[5164,5110,5277,5018,5133,4574,5312,4005,5211,3957,5796,3414,5366,3190,5413,3082,4976,2735,4553,2792,3760,2384,3958,2222,4132,1477,4564,776,4258,358,4228,3,3926,0,3778,235,3388,263,3399,525,3164,512,2875,1065,2680,1670,2538,3570,2300,3621,2261,3798,1773,3794,1279,4069,230,4222,0,4409,678,4458,604,4922,982,4901,1152,5288,1518,5391,1542,5622,1814,5827,1611,5987,1615,6211,2135,7300,1836,7558,1903,8101,1987,8042,2082,8248,2571,8251,2451,8311,2731,8778,2823,8649,3140,8730,3205,9064,3309,8891,3424,8954,3652,9336,3893,9049,3765,8320,4091,8190,4323,8308,4629,8030,4489,7859,4647,7757,4620,7289,4185,6993,3868,7015,3894,6558,3612,6316,3754,6360,3870,6001,4097,5981,3905,5394,4085,5440,4013,5069,5164,5110]]},{"id":"650000","code":"650000","name":"新疆","short":"新","capital":"乌鲁木齐","region":"西北","ox":20.0,"oy":115.34,"bw":383.42,"bh":299.74,"rings":[[38342,16039,38339,15649,37645,14732,37240,13060,36930,12982,37125,12395,36466,12431,36054,12193,35341,11382,34323,10593,33378,10304,32377,10247,32114,10053,31349,9976,30728,9574,30339,9573,30149,8667,30254,8353,30824,7774,30720,7110,31068,6606,31079,6253,30926,5687,30496,5074,30375,4079,30031,3851,29983,3486,29518,3521,29303,3037,28564,3033,28405,2720,27989,2499,27901,1993,27163,1483,27388,1200,26944,764,27226,593,27168,151,26720,135,26577,266,26141,9,25809,0,25529,255,25494,836,25125,1198,24568,1331,23932,1238,23538,1671,23395,1969,23319,3660,22990,4115,22597,4012,22029,4366,21789,3980,20565,3812,19835,3180,19348,2988,17902,5469,17702,5524,17429,6180,17411,6362,17753,6699,17666,7185,16712,6897,16589,6524,15114,6753,13889,6617,13472,6840,13576,7132,13862,7088,14092,7644,13807,8728,14017,10240,13823,10562,13950,10653,13922,10946,13182,11100,13455,11485,12889,11495,12626,11887,12622,12744,12395,12823,12262,13173,11922,13068,11606,13334,10851,13329,9587,13786,8770,13758,8622,14079,8113,14112,7946,14370,6970,14124,6747,13909,6534,13955,6292,14056,5629,15011,5224,15174,5200,14943,4697,14927,4536,15091,4191,15011,4355,14606,4265,14142,3561,14423,2979,14071,2849,14214,2958,14495,2633,14375,1914,14754,1559,14605,1207,14701,865,15205,936,15598,718,15805,294,15708,64,15826,202,16711,342,16808,11,17057,0,17638,284,17934,609,17679,1033,17883,1637,18461,1328,19113,1392,20070,1134,20232,1394,20913,1288,21097,873,21178,604,20976,218,20956,83,21310,648,21525,647,21801,928,21707,1520,22037,1440,22564,1766,22543,2092,22890,2123,23939,1835,24218,2053,24395,2031,24856,2378,24959,2766,24841,2730,25186,2953,25529,3592,26031,4391,26424,4648,26332,4784,26496,5186,26538,4892,26758,4815,27059,4979,27698,4904,28499,5124,28745,5327,28729,5353,28898,5582,28921,5816,29375,6046,29484,6096,29294,7452,29518,8162,28408,8831,28172,8716,27941,9085,27677,9922,28208,10208,28054,10367,28298,10635,28280,10829,28605,11129,28676,11767,28628,11842,28344,12404,28226,12464,28027,12726,27934,13138,28214,13560,28241,13523,28656,13702,28894,14529,29224,15235,29175,15473,29371,16034,29228,16062,29056,17200,28827,17593,28821,18124,29244,18303,29050,18970,28969,19325,28375,19710,28275,21051,28316,21470,28109,21796,28346,23402,28304,23842,28811,24144,28696,25497,29575,25798,29635,25978,29181,26343,29506,27068,29671,27492,29974,27615,29814,27871,29830,27847,28883,27356,28685,27418,28147,28254,27811,28460,27869,28467,27526,28210,26778,27348,26074,27561,24762,27111,24882,26904,24617,26906,24304,27443,24348,27894,24002,28990,23994,30944,23654,30880,23132,31460,22575,32230,20268,33621,20223,33757,19752,34144,19263,35092,18481,35451,18446,35661,18173,36129,17984,36349,18474,36840,18001,37652,17761,37802,17586,37730,17287,37907,17149,37630,16630,37865,16274,38342,16039]]},{"id":"710000","code":"710000","name":"台湾","short":"台","capital":"台北","region":"港澳台","ox":847.91,"oy":645.24,"bw":33.48,"bh":76.95,"rings":[[1116,6619,1587,6989,1820,7650,2148,7695,2243,5972,2561,5653,2874,4784,2952,2623,3274,1600,3078,945,3348,528,3108,262,2760,268,2389,0,1379,771,0,3986,131,4768,40,5379,296,5502,731,6414,1116,6619]]},{"id":"810000","code":"810000","name":"香港","short":"港","capital":"香港","region":"港澳台","ox":724.5,"oy":724.86,"bw":10.97,"bh":8.64,"rings":[[313,146,97,355,111,465,333,489,197,609,222,557,77,598,0,864,264,755,300,804,427,526,588,569,542,637,643,727,856,765,829,560,941,617,854,355,1015,442,1097,228,922,145,716,278,681,232,949,89,774,7,578,0,313,146]]},{"id":"820000","code":"820000","name":"澳门","short":"澳","capital":"澳门","region":"港澳台","ox":718.05,"oy":733.57,"bw":1.5,"bh":2.3,"rings":[[53,230,150,166,81,36,42,0,1,10,0,88,47,153,53,230]]}],"inset":{"box":[1004.0,649.508435575556,150.0,200.0],"rings":[[[1093.76,731.79],[1094.02,725.56],[1093.76,731.79]],[[1089.44,746.99],[1092.36,741.64],[1089.44,746.99]],[[1082.97,763.05],[1085.02,757.23],[1082.97,763.05]],[[1083.07,778.76],[1082.27,773.53],[1083.03,779.0],[1083.07,778.76]],[[1083.72,798.74],[1083.03,800.32],[1083.82,798.77],[1084.79,794.41],[1083.72,798.74]],[[1068.27,821.18],[1071.89,816.53],[1068.27,821.18]],[[1050.7,840.62],[1047.57,841.47],[1051.97,840.31],[1053.93,839.36],[1050.7,840.62]],[[1025.92,829.39],[1026.2,829.78],[1025.59,827.17],[1025.59,824.45],[1025.47,827.18],[1025.92,829.39]],[[1035.57,802.4],[1035.21,803.08],[1036.24,801.15],[1036.53,799.39],[1036.43,797.83],[1036.33,800.21],[1035.57,802.4]],[[1032.91,782.57],[1033.1,782.99],[1032.05,780.28],[1029.79,777.58],[1031.95,780.33],[1032.91,782.57]],[[1012.13,676.15],[1012.13,676.15]],[[1012.19,675.95],[1012.19,675.95]],[[1012.12,676.16],[1012.12,676.16]],[[1012.1,675.51],[1012.1,675.51]],[[1012.4,675.6],[1012.4,675.6]],[[1012.14,676.15],[1012.14,676.15]],[[1012.11,675.55],[1012.11,675.55]],[[1012.11,675.55],[1012.11,675.55]],[[1012.22,675.97],[1012.22,675.97]],[[1012.22,675.91],[1012.22,675.91]],[[1012.22,675.91],[1012.22,675.91]],[[1012.12,675.55],[1012.12,675.55]],[[1012.11,675.54],[1012.11,675.54]],[[1012.13,675.91],[1012.13,675.91]],[[1012.21,675.98],[1012.21,675.98]],[[1012.23,675.92],[1012.23,675.92]],[[1012.13,675.51],[1012.13,675.51]],[[1012.25,675.84],[1012.25,675.84]],[[1012.31,675.87],[1012.31,675.87]],[[1012.25,675.86],[1012.25,675.86]],[[1012.21,675.97],[1012.21,675.97]],[[1012.0,675.99],[1012.0,675.99]],[[1012.33,675.91],[1012.33,675.91]],[[1012.15,675.56],[1012.15,675.56]],[[1012.15,675.91],[1012.15,675.91]],[[1012.24,675.81],[1012.24,675.81]],[[1012.14,675.55],[1012.14,675.55]],[[1012.34,675.84],[1012.34,675.84]],[[1012.14,675.52],[1012.14,675.52]],[[1012.1,675.54],[1012.1,675.54]],[[1012.29,675.86],[1012.29,675.86]],[[1012.25,675.94],[1012.25,675.94]],[[1012.25,675.95],[1012.25,675.95]],[[1012.28,675.93],[1012.28,675.93]],[[1012.22,675.95],[1012.22,675.95]],[[1012.29,675.89],[1012.29,675.89]],[[1012.34,675.9],[1012.34,675.9]],[[1012.2,675.91],[1012.2,675.91]],[[1012.26,675.81],[1012.26,675.81]],[[1012.25,675.79],[1012.25,675.79]],[[1012.27,675.81],[1012.27,675.81]],[[1012.1,675.54],[1012.1,675.54]],[[1012.22,675.91],[1012.22,675.91]],[[1012.02,675.96],[1012.02,675.96]],[[1012.35,675.78],[1012.35,675.78]],[[1012.11,675.53],[1012.11,675.53]],[[1012.15,675.54],[1012.15,675.54]],[[1012.11,675.56],[1012.11,675.56]],[[1012.21,675.85],[1012.21,675.85]],[[1012.26,675.95],[1012.26,675.95]],[[1012.35,675.87],[1012.35,675.87]],[[1012.28,675.85],[1012.28,675.85]],[[1012.36,675.83],[1012.36,675.83]],[[1012.26,675.55],[1012.26,675.55]],[[1012.32,675.89],[1012.32,675.89]],[[1012.2,675.89],[1012.2,675.89]],[[1012.25,675.97],[1012.25,675.97]],[[1012.25,675.82],[1012.25,675.82]],[[1012.41,675.82],[1012.41,675.82]],[[1012.23,675.84],[1012.23,675.84]],[[1012.25,675.78],[1012.25,675.78]],[[1012.35,675.83],[1012.35,675.83]],[[1012.05,675.95],[1012.05,675.95]],[[1012.1,675.93],[1012.1,675.93]],[[1012.28,675.93],[1012.28,675.93]],[[1012.18,675.95],[1012.18,675.95]],[[1012.22,675.81],[1012.22,675.81]],[[1012.38,675.84],[1012.38,675.84]],[[1012.23,675.56],[1012.23,675.56]],[[1012.06,675.95],[1012.06,675.95]],[[1012.29,675.93],[1012.29,675.93]],[[1012.1,675.98],[1012.1,675.98]],[[1012.11,675.92],[1012.11,675.92]],[[1012.05,675.96],[1012.05,675.96]],[[1012.14,675.91],[1012.14,675.91]],[[1012.34,675.86],[1012.34,675.86]],[[1012.12,675.95],[1012.12,675.95]],[[1012.24,675.58],[1012.24,675.58]],[[1012.27,675.8],[1012.27,675.8]],[[1012.23,675.56],[1012.23,675.56]],[[1012.32,675.85],[1012.32,675.85]],[[1012.38,675.82],[1012.38,675.82]],[[1012.26,675.99],[1012.26,675.99]],[[1012.16,675.91],[1012.16,675.91]],[[1012.11,675.97],[1012.11,675.97]],[[1012.13,675.91],[1012.13,675.91]],[[1012.15,676.06],[1012.15,676.06]],[[1012.25,675.91],[1012.25,675.91]],[[1012.26,675.95],[1012.26,675.95]],[[1012.17,675.93],[1012.17,675.93]],[[1012.2,676.0],[1012.2,676.0]],[[1012.35,675.55],[1012.35,675.55]],[[1012.38,675.85],[1012.38,675.85]],[[1012.24,675.56],[1012.24,675.56]],[[1012.16,676.09],[1012.16,676.09]],[[1012.11,675.96],[1012.11,675.96]],[[1012.14,675.91],[1012.14,675.91]],[[1012.17,675.96],[1012.17,675.96]],[[1012.15,676.07],[1012.15,676.07]],[[1012.15,676.07],[1012.15,676.07]],[[1012.29,675.66],[1012.29,675.66]],[[1012.2,675.84],[1012.2,675.84]],[[1012.21,675.59],[1012.21,675.59]],[[1012.17,676.1],[1012.17,676.1]],[[1012.15,676.09],[1012.15,676.09]],[[1012.14,676.07],[1012.14,676.07]],[[1012.13,675.53],[1012.13,675.53]],[[1012.14,675.58],[1012.14,675.58]],[[1012.15,676.08],[1012.15,676.08]],[[1012.15,676.06],[1012.15,676.06]],[[1012.18,676.04],[1012.18,676.04]],[[1012.33,675.88],[1012.33,675.88]],[[1012.27,675.98],[1012.27,675.98]],[[1012.1,675.96],[1012.1,675.96]],[[1012.22,675.57],[1012.22,675.57]],[[1012.27,675.56],[1012.27,675.56]],[[1012.36,675.9],[1012.36,675.9]],[[1012.16,675.54],[1012.16,675.54]],[[1012.31,675.83],[1012.31,675.83]],[[1012.38,675.82],[1012.38,675.82]],[[1012.16,675.55],[1012.16,675.55]],[[1012.31,675.83],[1012.31,675.83]],[[1012.15,675.88],[1012.15,675.88]],[[1012.25,675.58],[1012.25,675.58]],[[1012.38,675.8],[1012.38,675.8]],[[1012.4,675.8],[1012.4,675.8]],[[1012.23,675.89],[1012.23,675.89]],[[1012.26,675.87],[1012.26,675.87]],[[1012.15,676.05],[1012.15,676.05]]]}};
+
+const NS = "http://www.w3.org/2000/svg";
+const $ = (s) => document.querySelector(s);
+const REGION_COLOR = {
+  "华北":"#e9a23b","东北":"#7fb77e","华东":"#4fa3d1",
+  "中南":"#c97ba8","西南":"#8a7fd1","西北":"#d98a6a","港澳台":"#55b8b0"
+};
+const REGIONS = ["华北","东北","华东","中南","西南","西北","港澳台"];
+
+/* 省级行政区全称（官方名称）与备选简称 */
+const FULL = {
+  "110000":"北京市","120000":"天津市","130000":"河北省","140000":"山西省","150000":"内蒙古自治区",
+  "210000":"辽宁省","220000":"吉林省","230000":"黑龙江省","310000":"上海市","320000":"江苏省",
+  "330000":"浙江省","340000":"安徽省","350000":"福建省","360000":"江西省","370000":"山东省",
+  "410000":"河南省","420000":"湖北省","430000":"湖南省","440000":"广东省","450000":"广西壮族自治区",
+  "460000":"海南省","500000":"重庆市","510000":"四川省","520000":"贵州省","530000":"云南省",
+  "540000":"西藏自治区","610000":"陕西省","620000":"甘肃省","630000":"青海省","640000":"宁夏回族自治区",
+  "650000":"新疆维吾尔自治区","710000":"台湾省","810000":"香港特别行政区","820000":"澳门特别行政区"
+};
+const ALT = { "510000":"蜀","520000":"贵","530000":"云","610000":"秦","620000":"陇" };
+
+/* ---------------- 预处理几何 ---------------- */
+const PROV = GEO.provinces.map((p) => {
+  // 全局坐标（视图坐标系）用于命中检测与标签
+  const rings = p.rings.map((flat) => {
+    const a = [];
+    for (let i = 0; i < flat.length; i += 2) a.push([p.ox + flat[i] / 100, p.oy + flat[i + 1] / 100]);
+    return a;
+  });
+  // 局部坐标 path（配合 <g transform="translate(ox,oy) scale(.01)">）
+  const d = p.rings.map((flat) => {
+    let s = "M";
+    for (let i = 0; i < flat.length; i += 2) s += (i ? "L" : "") + flat[i] + " " + flat[i + 1];
+    return s + "Z";
+  }).join("");
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const r of rings) for (const q of r) {
+    if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0];
+    if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1];
+  }
+  const main = rings[0];
+  return {
+    id: p.code, name: p.name, short: p.short, capital: p.capital, region: p.region,
+    ox: p.ox, oy: p.oy, bw: p.bw, bh: p.bh, rings, d, main,
+    box: [x0, y0, x1, y1], area: p.bw * p.bh,
+    anchor: insideAnchor(main, [x0, y0, x1, y1]),
+    localBox: [0, 0, Math.round(p.bw * 100), Math.round(p.bh * 100)],
+    placed: false
+  };
+});
+const BYID = {}; PROV.forEach((p) => (BYID[p.id] = p));
+
+function insideAnchor(ring, box) {
+  const c = polyCentroid(ring);
+  if (inPoly(ring, c[0], c[1])) return c;
+  const [x0, y0, x1, y1] = box;
+  let best = null, bestD = Infinity;
+  for (let i = 1; i < 14; i++) for (let j = 1; j < 14; j++) {
+    const x = x0 + (x1 - x0) * i / 14, y = y0 + (y1 - y0) * j / 14;
+    if (!inPoly(ring, x, y)) continue;
+    const dd = (x - c[0]) ** 2 + (y - c[1]) ** 2;
+    if (dd < bestD) { bestD = dd; best = [x, y]; }
+  }
+  return best || c;
+}
+function polyCentroid(ring) {
+  let a = 0, cx = 0, cy = 0, n = ring.length;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = ring[i], [x2, y2] = ring[(i + 1) % n];
+    const f = x1 * y2 - x2 * y1;
+    a += f; cx += (x1 + x2) * f; cy += (y1 + y2) * f;
+  }
+  a *= 0.5;
+  if (Math.abs(a) < 1e-9) return [ring[0][0], ring[0][1]];
+  return [cx / (6 * a), cy / (6 * a)];
+}
+function inPoly(ring, x, y) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function segDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay, dd = dx * dx + dy * dy;
+  let t = dd > 1e-12 ? ((px - ax) * dx + (py - ay) * dy) / dd : 0;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+function ringDist(rings, x, y) {
+  let m = Infinity;
+  for (const r of rings) {
+    for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const dd = segDist(x, y, r[j][0], r[j][1], r[i][0], r[i][1]);
+      if (dd < m) m = dd;
+    }
+  }
+  return m;
+}
+function hitProvince(x, y) {
+  let near = null, nearD = Infinity;
+  for (const p of PROV) {
+    const [x0, y0, x1, y1] = p.box;
+    if (x < x0 - 1 || x > x1 + 1 || y < y0 - 1 || y > y1 + 1) continue;
+    for (const r of p.rings) if (inPoly(r, x, y)) return p;
+    const dd = ringDist(p.rings, x, y);
+    if (dd < nearD) { nearD = dd; near = p; }
+  }
+  return near && nearD < 3 ? near : null;
+}
+
+/* ================= LABEL LAYOUT (pure) ================= */
+function layoutLabels(items, view) {
+  const placed = [];
+  const out = {};
+  const overlap = (a, b) => !(a[0] + a[2] < b[0] || b[0] + b[2] < a[0] || a[1] + a[3] < b[1] || b[1] + b[3] < a[1]);
+  for (const it of items) {
+    const fs = it.area > 45000 ? 16 : (it.bw < 46 || it.bh < 46 ? 11 : 13.5);
+    const w = it.short.length * fs * 0.78 + 4, h = fs * 1.12 + 3;
+    const cands = [[0, 0]];
+    const R = [.85, 1.3, 1.75, 2.3, 3, 3.8, 4.8];
+    for (const r of R) for (let k = 0; k < 8; k++) {
+      const a = (k * Math.PI) / 4 + (r > 2 ? Math.PI / 8 : 0);
+      cands.push([Math.cos(a) * r * (w / 2 + fs), Math.sin(a) * r * (h / 2 + fs * .55)]);
+    }
+    let pick = null, fallback = null, fbScore = -Infinity;
+    for (const [dx, dy] of cands) {
+      const x = it.ax + dx, y = it.ay + dy;
+      const rect = [x - w / 2, y - h / 2, w, h];
+      if (rect[0] < 4 || rect[1] < 4 || rect[0] + w > view[2] - 4 || rect[1] + h > view[3] - 4) continue;
+      let bad = 0;
+      for (const q of placed) if (overlap(q, rect)) bad++;
+      const score = -bad * 100 - Math.hypot(dx, dy) * 0.06;
+      if (score > fbScore) { fbScore = score; fallback = { x, y, rect, d: Math.hypot(dx, dy) }; }
+      if (!bad) { pick = { x, y, rect, d: Math.hypot(dx, dy) }; break; }
+    }
+    const c = pick || fallback || { x: it.ax, y: it.ay, rect: [it.ax, it.ay, w, h], d: 0 };
+    placed.push([c.rect[0] - 2.5, c.rect[1] - 2.5, c.rect[2] + 5, c.rect[3] + 5]);   // 留出间距
+    out[it.id] = { x: c.x, y: c.y, fs, lead: c.d > 7 };
+  }
+  return out;
+}
+/* ================= END LABEL LAYOUT ================= */
+
+/* ---------------- 状态 ---------------- */
+const S = {
+  mode: "easy", placed: 0, errors: 0, hints: 0,
+  t0: 0, timer: null, running: false, sound: true, sel: null, drag: null, started: false
+};
+let LABELS = {};
+
+/* ---------------- 音效 ---------------- */
+let AC = null;
+function beep(freqs, dur, type, gain) {
+  if (!S.sound) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === "suspended") AC.resume();
+    freqs.forEach((f, i) => {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "sine"; o.frequency.value = f;
+      const st = AC.currentTime + i * dur * 0.8;
+      g.gain.setValueAtTime(0, st);
+      g.gain.linearRampToValueAtTime(gain || .12, st + .012);
+      g.gain.exponentialRampToValueAtTime(.0008, st + dur);
+      o.connect(g); g.connect(AC.destination); o.start(st); o.stop(st + dur + .02);
+    });
+  } catch (e) { /* 忽略音频错误 */ }
+}
+
+/* ---------------- 建图 ---------------- */
+const board = $("#board");
+const VB = GEO.view;
+board.setAttribute("viewBox", VB.join(" "));
+function mk(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  (parent || board).appendChild(e);
+  return e;
+}
+const gGrid = mk("g", { class: "gridG" });
+const gMap = mk("g", { class: "mapG" });
+const gLead = mk("g", { class: "leadG" });
+const gLbl = mk("g", { class: "lblG" });
+const gTop = mk("g", { class: "topG" });
+
+(function build() {
+  // 装饰网格
+  for (let x = 0; x <= VB[2]; x += 40) mk("line", { class: "grid", x1: x, y1: 0, x2: x, y2: VB[3] }, gGrid);
+  for (let y = 0; y <= VB[3]; y += 40) mk("line", { class: "grid", x1: 0, y1: y, x2: VB[2], y2: y }, gGrid);
+
+  // 省份
+  for (const p of PROV) {
+    const g = mk("g", {
+      class: "prov", "data-id": p.id,
+      transform: "translate(" + p.ox + " " + p.oy + ") scale(0.01)"
+    }, gMap);
+    g.style.setProperty("--c", REGION_COLOR[p.region]);
+    const path = mk("path", { class: "land", d: p.d }, g);
+    p.g = g; p.path = path;
+  }
+
+  // 南海诸岛小图
+  if (GEO.inset) {
+    const b = GEO.inset.box;
+    mk("rect", { class: "insetbox", x: b[0], y: b[1], width: b[2], height: b[3], rx: 6 }, gTop);
+    const g = mk("g", {}, gTop);
+    for (const r of GEO.inset.rings) {
+      const pts = r.map((q) => q[0].toFixed(1) + "," + q[1].toFixed(1)).join(" ");
+      mk("polyline", { class: "insetline", points: pts }, g);
+    }
+    const t = mk("text", { class: "insettxt", x: b[0] + b[2] / 2, y: b[1] + 12 }, gTop);
+    t.textContent = "南海诸岛";
+  }
+
+  // 标签
+  const items = PROV.map((p) => ({ id: p.id, short: p.short, ax: p.anchor[0], ay: p.anchor[1], bw: p.bw, bh: p.bh, area: p.area }))
+    .sort((a, b) => b.area - a.area);
+  LABELS = layoutLabels(items, VB);
+  for (const p of PROV) {
+    const L = LABELS[p.id];
+    const line = mk("line", { class: "lead", x1: p.anchor[0], y1: p.anchor[1], x2: L.x, y2: L.y }, gLead);
+    const dot = mk("circle", { class: "dotc", cx: L.x, cy: L.y - L.fs * .72, r: 1.7 }, gLead);
+    const t = mk("text", { class: "lbl", "data-id": p.id, x: L.x, y: L.y, "font-size": L.fs }, gLbl);
+    t.textContent = p.short;
+    p.lbl = t; p.lead = line; p.dot = dot;
+  }
+})();
+
+/* ---------------- 图例 ---------------- */
+(function legend() {
+  const box = $("#legend");
+  const t = document.createElement("div");
+  t.className = "t"; t.textContent = "地理分区"; box.appendChild(t);
+  for (const r of REGIONS) {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = '<i style="background:' + REGION_COLOR[r] + '"></i>' + r;
+    box.appendChild(row);
+  }
+})();
+
+/* ---------------- 碎片托盘 ---------------- */
+const trayGrid = $("#trayGrid");
+function miniSVG(p, pad) {
+  const w = p.localBox[2], h = p.localBox[3];
+  const pd = pad === undefined ? Math.max(6, Math.max(w, h) * 0.05) : pad;
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", (-pd) + " " + (-pd) + " " + (w + pd * 2) + " " + (h + pd * 2));
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("class", "land");
+  path.setAttribute("d", p.d);
+  path.setAttribute("vector-effect", "non-scaling-stroke");
+  svg.appendChild(path);
+  return svg;
+}
+function buildTray() {
+  trayGrid.innerHTML = "";
+  const order = PROV.slice();
+  for (let i = order.length - 1; i > 0; i--) {           // 洗牌
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  for (const p of order) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.dataset.id = p.id;
+    cell.style.setProperty("--c", REGION_COLOR[p.region]);
+    cell.appendChild(miniSVG(p));
+    const nm = document.createElement("div");
+    nm.className = "nm"; nm.textContent = p.short;
+    cell.appendChild(nm);
+    cell.addEventListener("pointerdown", onPieceDown);
+    p.cell = cell;
+    trayGrid.appendChild(cell);
+  }
+}
+
+/* ---------------- 拖拽 ---------------- */
+const layer = $("#layer"), tip = $("#tip");
+function clientToBoard(cx, cy) {
+  const m = board.getScreenCTM();
+  if (!m) return null;
+  const inv = m.inverse();
+  return { x: inv.a * cx + inv.c * cy + inv.e, y: inv.b * cx + inv.d * cy + inv.f, scale: m.a };
+}
+function showTip(cx, cy, text) {
+  if (!text) { tip.style.opacity = 0; return; }
+  tip.textContent = text;
+  tip.style.left = cx + "px"; tip.style.top = cy + "px";
+  tip.style.opacity = 1;
+}
+function makeGhost(p, cx, cy) {
+  const g = document.createElement("div");
+  g.className = "ghost";
+  g.style.setProperty("--c", REGION_COLOR[p.region]);
+  g.appendChild(miniSVG(p));
+  g.style.transform = "translate(" + cx + "px," + cy + "px) translate(-50%,-50%)";
+  layer.appendChild(g);
+  return g;
+}
+function onPieceDown(ev) {
+  if (ev.button !== undefined && ev.button !== 0) return;
+  const id = ev.currentTarget.dataset.id, p = BYID[id];
+  if (!p || p.placed) return;
+  ev.preventDefault();
+  startClock();
+  S.sel = p;
+  document.querySelectorAll(".cell.sel").forEach((c) => c.classList.remove("sel"));
+  p.cell.classList.add("sel");
+  S.drag = { p, sx: ev.clientX, sy: ev.clientY, moved: false, ghost: null };
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+  window.addEventListener("pointercancel", onUp);
+}
+function onMove(ev) {
+  const d = S.drag;
+  if (!d) return;
+  if (!d.moved && Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) > 6) {
+    d.moved = true;
+    d.ghost = makeGhost(d.p, ev.clientX, ev.clientY);
+    hideRings();
+  }
+  if (!d.moved) return;
+  d.ghost.style.transform = "translate(" + ev.clientX + "px," + ev.clientY + "px) translate(-50%,-50%)";
+  const pt = clientToBoard(ev.clientX, ev.clientY);
+  let hov = null;
+  if (pt && pt.x >= -20 && pt.y >= -20 && pt.x <= VB[2] + 20 && pt.y <= VB[3] + 20) hov = hitProvince(pt.x, pt.y);
+  setHover(hov);
+  if (S.mode === "challenge" || !hov || hov.placed) showTip(0, 0, "");
+  else showTip(ev.clientX, ev.clientY, hov.name);
+}
+function setHover(p) {
+  if (S.hover === p) return;
+  if (S.hover && S.hover.g) S.hover.g.classList.remove("hover");
+  S.hover = p;
+  if (p && p.g && !p.placed) p.g.classList.add("hover");
+}
+function onUp(ev) {
+  const d = S.drag;
+  window.removeEventListener("pointermove", onMove);
+  window.removeEventListener("pointerup", onUp);
+  window.removeEventListener("pointercancel", onUp);
+  S.drag = null;
+  if (!d) return;
+  showTip(0, 0, "");
+  setHover(null);
+  if (!d.moved) return;                  // 点选模式：先点碎片，再点地图落位
+  const wr = $("#boardWrap").getBoundingClientRect();
+  const inBoard = ev.clientX >= wr.left && ev.clientX <= wr.right && ev.clientY >= wr.top && ev.clientY <= wr.bottom;
+  const tr = trayGrid.getBoundingClientRect();
+  const inTray = ev.clientX >= tr.left && ev.clientX <= tr.right && ev.clientY >= tr.top && ev.clientY <= tr.bottom;
+  if (!inBoard || inTray) { d.ghost.remove(); return; }
+  const pt = clientToBoard(ev.clientX, ev.clientY);
+  if (!pt) { d.ghost.remove(); return; }
+  const tol = 26 / (pt.scale || 1);      // 26 屏幕像素的容差，方便小块（香港/澳门等）
+  const near = pt && ringDist(d.p.rings, pt.x, pt.y) < tol;
+  const hov = pt ? hitProvince(pt.x, pt.y) : null;
+  if (near || (hov && hov === d.p)) placePiece(d.p, d.ghost, ev.clientX, ev.clientY);
+  else wrong(d.p, d.ghost, hov);
+}
+board.addEventListener("pointerup", (ev) => {                 // 点选后点击地图落位 / 点击已拼好的省份复习
+  if (S.drag) return;
+  const pt = clientToBoard(ev.clientX, ev.clientY);
+  if (!pt) return;
+  if (!S.sel || S.sel.placed) {
+    const done = hitProvince(pt.x, pt.y);
+    if (done && done.placed) toast(info(done));
+    return;
+  }
+  const tol = 26 / (pt.scale || 1);
+  const hov = hitProvince(pt.x, pt.y);
+  if (ringDist(S.sel.rings, pt.x, pt.y) < tol || hov === S.sel) {
+    const g = makeGhost(S.sel, ev.clientX, ev.clientY);
+    placePiece(S.sel, g, ev.clientX, ev.clientY);
+  } else if (hov) {
+    S.errors++; $("#sErr").textContent = S.errors;
+    flash(hov); beep([180, 140], .16, "square", .08);
+  }
+});
+
+function placePiece(p, ghost, cx, cy) {
+  if (p.placed) { ghost.remove(); return; }
+  p.placed = true; S.placed++;
+  S.sel = null;
+  if (p.cell) { p.cell.classList.remove("sel"); p.cell.classList.add("done"); }
+  // 目标屏幕坐标
+  const m = board.getScreenCTM();
+  const tx = m.a * p.anchor[0] + m.c * p.anchor[1] + m.e;
+  const ty = m.b * p.anchor[0] + m.d * p.anchor[1] + m.f;
+  ghost.style.transition = "transform .52s cubic-bezier(.25,.9,.25,1), opacity .52s";
+  ghost.style.transform = "translate(" + tx + "px," + ty + "px) translate(-50%,-50%) scale(.22)";
+  ghost.style.opacity = ".15";
+  setTimeout(() => ghost.remove(), 560);
+  setTimeout(() => {
+    p.g.classList.add("on");
+    p.lbl.classList.add("on");
+    if (LABELS[p.id].lead) { p.lead.classList.add("on"); p.dot.classList.add("on"); }
+    beep([660 + Math.random() * 80, 990], .2, "sine", .1);
+    toast(info(p));
+    $("#tipbar").style.opacity = 0;
+    update();
+    if (S.placed === PROV.length) win();
+  }, 300);
+  update();
+}
+function info(p) {
+  return '<b>' + p.name + '</b> · 简称「' + p.short.split("/")[0] + '」 · 行政中心 ' + p.capital +
+    (p.region ? ' · ' + p.region : '');
+}
+function wrong(p, ghost, hov) {
+  S.errors++;
+  $("#sErr").textContent = S.errors;
+  beep([190, 130], .17, "square", .07);
+  ghost.style.transition = "transform .3s";
+  ghost.style.transform += " rotate(6deg)";
+  setTimeout(() => { ghost.style.opacity = "0"; }, 180);
+  setTimeout(() => ghost.remove(), 420);
+  if (p.cell) { p.cell.classList.add("shake"); setTimeout(() => p.cell.classList.remove("shake"), 400); }
+  if (hov && !hov.placed) flash(hov);
+}
+function flash(p) {
+  p.g.classList.add("bad");
+  setTimeout(() => p.g.classList.remove("bad"), 460);
+}
+function update() {
+  $("#sDone").textContent = S.placed + "/" + PROV.length;
+  const pct = (S.placed / PROV.length) * 100;
+  $("#barIn").style.width = pct + "%";
+  $("#trayCnt").textContent = PROV.length - S.placed;
+}
+
+/* ---------------- 提示 ---------------- */
+const gHints = mk("g", { class: "hintG" });
+function hideRings() { gHints.innerHTML = ""; document.querySelectorAll(".prov.hintT").forEach((g) => g.classList.remove("hintT")); }
+function hintTarget(p, count) {
+  hideRings();
+  const r = Math.max(p.bw, p.bh) * 0.62 + 6;
+  const c = mk("circle", { class: "ring", cx: p.anchor[0], cy: p.anchor[1], r: r }, gHints);
+  p.g.classList.add("hintT");
+  if (count !== false) { S.hints++; VERR[V.view].hints = S.hints; startClock(); }
+  clearTimeout(hintTarget._t);
+  hintTarget._t = setTimeout(hideRings, 2600);
+}
+$("#btnHint").addEventListener("click", () => {
+  if (V.view === "match") { matchHint(); return; }
+  let p = S.sel && !S.sel.placed ? S.sel : PROV.find((q) => !q.placed);
+  if (!p) return;
+  if (!S.sel) { p.cell && p.cell.classList.add("sel"); S.sel = p; }
+  hintTarget(p, true);
+  beep([880, 1180], .12, "sine", .07);
+});
+
+/* ================= 连线练习（简称 · 全称 · 行政中心） ================= */
+const M = {
+  scope: "全部", round: 1, queue: [], cur: [], links: [], sel: null, pend: null,
+  pointer: null, over: null, donePids: 0, totalPids: 34, busy: false, hintT: null, tNext: null
+};
+const matchArea = $("#matchArea"), matchLines = $("#matchLines");
+const mSolid = document.createElementNS(NS, "g"), mPend = document.createElementNS(NS, "g");
+matchLines.appendChild(mSolid); matchLines.appendChild(mPend);
+
+function scopeProvs() { return M.scope === "全部" ? PROV.slice() : PROV.filter((p) => p.region === M.scope); }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function fullName(p) { return FULL[p.id] || p.name; }
+function mainShort(p) { return p.short.split("/")[0]; }
+function infoFull(p) {
+  return '<b>' + fullName(p) + '</b> · 简称「' + mainShort(p) + (ALT[p.id] ? "/" + ALT[p.id] : "") +
+    '」 · 行政中心 ' + p.capital + ' · ' + p.region;
+}
+function tint(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return "rgba(" + (n >> 16 & 255) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + a + ")";
+}
+function svgEl(tag, attrs, parent) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  (parent || mSolid).appendChild(e);
+  return e;
+}
+function buildScopeChips() {
+  const box = $("#scopeChips");
+  box.innerHTML = "";
+  for (const s of ["全部"].concat(REGIONS)) {
+    const n = s === "全部" ? PROV.length : PROV.filter((p) => p.region === s).length;
+    const b = document.createElement("button");
+    b.className = "chip" + (s === M.scope ? " on" : "");
+    b.innerHTML = (s === "全部" ? "" : '<i style="background:' + REGION_COLOR[s] + '"></i>') + s +
+      '<span class="cnt">' + n + "</span>";
+    b.addEventListener("click", () => { if (M.scope !== s) { M.scope = s; matchReset(); } });
+    box.appendChild(b);
+  }
+}
+function clearSel() { matchArea.querySelectorAll(".mitem.sel").forEach((e) => e.classList.remove("sel")); }
+/* 连线按「方向」记录：中间列的全称可以左右各连一次 */
+function canLink(el, toCol) {
+  const dir = +toCol > +el.dataset.col ? "R" : "L";
+  return !el.dataset["linked" + dir];
+}
+function markLinked(el, toCol) {
+  const dir = +toCol > +el.dataset.col ? "R" : "L";
+  el.dataset["linked" + dir] = "1";
+}
+function freeDir(el) {
+  const c = +el.dataset.col;
+  if (c === 0 || c === 2) return canLink(el, 1);
+  return canLink(el, 0) || canLink(el, 2);
+}
+function pairOK(src, tgt) {
+  const a = +src.dataset.col, b = +tgt.dataset.col;
+  if (Math.abs(a - b) !== 1) return false;
+  return canLink(src, b) && canLink(tgt, a);
+}
+function hotTarget(t) {
+  if (M.over === t) return;
+  if (M.over) M.over.classList.remove("hot");
+  M.over = t;
+  if (t) t.classList.add("hot");
+}
+function hideMatchHint() { matchArea.querySelectorAll(".hintP").forEach((e) => e.classList.remove("hintP")); }
+function linkCount(pid) { return M.links.filter((l) => l.pid === pid).length; }
+
+function matchReset() {
+  clearTimeout(M.hintT); clearTimeout(M.tNext); M.hintT = M.tNext = null;
+  resetClock();
+  S.errors = 0; S.hints = 0; S.sel = null; VERR.match = { errors: 0, hints: 0 };
+  $("#sErr").textContent = "0";
+  M.round = 1; M.links = []; M.sel = null; M.pend = null; M.pointer = null; M.over = null;
+  M.donePids = 0; M.busy = false; M.cur = [];
+  M.queue = shuffle(scopeProvs());
+  M.totalPids = M.queue.length;
+  buildScopeChips();
+  $("#win").classList.remove("show");
+  $("#confetti").innerHTML = "";
+  nextRound();
+  showBest();
+}
+function nextRound() {
+  const next = M.queue.splice(0, 6);
+  M.sel = null; M.pend = null; M.pointer = null; M.over = null; M.busy = false;
+  hideMatchHint();
+  if (!next.length) {            // 全部连完：保留最后一轮的连线作为成绩展示
+    M.finished = true; M.cur = [];
+    win();
+    requestAnimationFrame(() => { redrawLinks(); redrawPend(); });
+    return;
+  }
+  M.finished = false;
+  M.links = [];
+  M.cur = next;
+  const cols = [$("#col0"), $("#col1"), $("#col2")];
+  cols.forEach((c) => c.querySelectorAll(".mitem").forEach((e) => e.remove()));
+  const list = [shuffle(M.cur.slice()), shuffle(M.cur.slice()), shuffle(M.cur.slice())];
+  list.forEach((arr, ci) => {
+    for (const p of arr) {
+      const el = document.createElement("div");
+      el.className = "mitem";
+      el.dataset.pid = p.id; el.dataset.col = ci;
+      el.textContent = ci === 0 ? mainShort(p) : ci === 1 ? fullName(p) : p.capital;
+      el.addEventListener("pointerdown", onItemDown);
+      cols[ci].appendChild(el);
+    }
+  });
+  $("#mRound").textContent = M.round;
+  updateMatchStat();
+  requestAnimationFrame(() => { syncLineSize(); redrawLinks(); redrawPend(); });
+}
+function updateMatchStat() {
+  $("#sDone").textContent = M.donePids + "/" + M.totalPids;
+  $("#mLeft").textContent = M.cur.filter((p) => linkCount(p.id) < 2).length;
+}
+function onItemDown(ev) {
+  if (ev.button !== undefined && ev.button !== 0) return;
+  const el = ev.currentTarget;
+  if (!freeDir(el)) return;
+  ev.preventDefault();
+  startClock();
+  hideMatchHint();
+  if (M.sel && M.sel !== el && pairOK(M.sel, el)) { connect(M.sel, el); return; }
+  if (M.sel === el) { el.classList.remove("sel"); M.sel = null; redrawPend(); return; }
+  clearSel();
+  M.sel = el; el.classList.add("sel");
+  M.pend = { el, sx: ev.clientX, sy: ev.clientY, moved: false };
+  window.addEventListener("pointermove", onItemMove);
+  window.addEventListener("pointerup", onItemUp);
+  window.addEventListener("pointercancel", onItemUp);
+  redrawPend();
+}
+function itemAt(cx, cy) {
+  const e = document.elementFromPoint(cx, cy);
+  const it = e && e.closest ? e.closest(".mitem") : null;
+  return it && matchArea.contains(it) ? it : null;
+}
+function onItemMove(ev) {
+  const d = M.pend;
+  if (!d) return;
+  if (!d.moved && Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) > 6) d.moved = true;
+  if (!d.moved) return;
+  const r = matchArea.getBoundingClientRect();
+  M.pointer = { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  const t = itemAt(ev.clientX, ev.clientY);
+  hotTarget(t && t !== d.el && pairOK(d.el, t) ? t : null);
+  redrawPend();
+}
+function onItemUp(ev) {
+  window.removeEventListener("pointermove", onItemMove);
+  window.removeEventListener("pointerup", onItemUp);
+  window.removeEventListener("pointercancel", onItemUp);
+  const d = M.pend; M.pend = null;
+  hotTarget(null);
+  if (!d) return;
+  if (!d.moved) { redrawPend(); return; }        // 未移动 -> 留在选中态，进入「点两下」连线
+  const t = itemAt(ev.clientX, ev.clientY);
+  M.pointer = null;
+  if (t && t !== d.el && pairOK(d.el, t)) connect(d.el, t);
+  else redrawPend();
+}
+function connect(a, b) {
+  const L = +a.dataset.col < +b.dataset.col ? a : b;
+  const R = L === a ? b : a;
+  hideMatchHint(); clearSel();
+  M.sel = null; M.pointer = null;
+  if (L.dataset.pid !== R.dataset.pid) {                       // 连错
+    S.errors++; VERR.match.errors = S.errors;
+    $("#sErr").textContent = S.errors;
+    beep([190, 130], .17, "square", .07);
+    [L, R].forEach((el) => { el.classList.add("bad"); setTimeout(() => el.classList.remove("bad"), 520); });
+    redrawPend();
+    return;
+  }
+  const pid = L.dataset.pid, p = BYID[pid], c = REGION_COLOR[p.region];
+  markLinked(L, R.dataset.col); markLinked(R, L.dataset.col);
+  [L, R].forEach((el) => {
+    el.classList.remove("bad"); el.classList.add("linked");
+    if (!freeDir(el)) el.classList.add("locked");
+    el.style.borderColor = c; el.style.background = tint(c, .16); el.style.color = "#fff";
+  });
+  M.links.push({ a: L, b: R, pid });
+  beep([700 + Math.random() * 90, 1000], .16, "sine", .09);
+  redrawLinks();
+  redrawPend();
+  if (linkCount(pid) === 2) {                                   // 该省「简称+行政中心」都连好了
+    M.donePids++;
+    matchArea.querySelectorAll('.mitem[data-pid="' + pid + '"]').forEach((el) => el.classList.add("done-p"));
+    toast(infoFull(p));
+    updateMatchStat();
+  }
+  checkRoundDone();
+}
+function checkRoundDone() {
+  if (M.busy || !M.cur.length) return;
+  if (M.cur.every((p) => linkCount(p.id) === 2)) {
+    M.busy = true;
+    clearTimeout(M.tNext);
+    M.tNext = setTimeout(() => { M.round++; if (V.view === "match") nextRound(); }, 950);
+  }
+}
+function syncLineSize() {
+  const r = matchArea.getBoundingClientRect();
+  if (!r.width || !r.height) return false;
+  matchLines.setAttribute("viewBox", "0 0 " + r.width + " " + r.height);
+  matchLines.setAttribute("width", r.width);
+  matchLines.setAttribute("height", r.height);
+  return true;
+}
+function anchorOf(el, side) {
+  const r = el.getBoundingClientRect(), c = matchArea.getBoundingClientRect();
+  return { x: (side === "r" ? r.right : r.left) - c.left, y: r.top + r.height / 2 - c.top };
+}
+function drawCurve(p1, p2, color, dashed) {
+  const dx = Math.max(14, Math.abs(p2.x - p1.x) * .45);
+  const d = "M" + p1.x + " " + p1.y + "C" + (p1.x + dx) + " " + p1.y + " " + (p2.x - dx) + " " + p2.y + " " + p2.x + " " + p2.y;
+  svgEl("path", { class: dashed ? "pend" : "", d: d, fill: "none", stroke: color, "stroke-width": dashed ? 2.4 : 2.8,
+    "stroke-linecap": "round", pathLength: 100 }, dashed ? mPend : mSolid);
+  if (!dashed) {
+    svgEl("circle", { cx: p1.x, cy: p1.y, r: 3.2, fill: color }, mSolid);
+    svgEl("circle", { cx: p2.x, cy: p2.y, r: 3.2, fill: color }, mSolid);
+  }
+}
+function redrawLinks() {
+  if (!syncLineSize()) return;
+  while (mSolid.firstChild) mSolid.removeChild(mSolid.firstChild);
+  for (const l of M.links) {
+    const p1 = anchorOf(l.a, "r"), p2 = anchorOf(l.b, "l");
+    drawCurve(p1, p2, REGION_COLOR[BYID[l.pid].region], false);
+  }
+}
+function redrawPend() {
+  if (!syncLineSize()) return;
+  while (mPend.firstChild) mPend.removeChild(mPend.firstChild);
+  const src = M.pend && M.pend.moved ? M.pend.el : M.sel;
+  if (!src || !M.pointer) return;
+  const col = +src.dataset.col;
+  const p1 = anchorOf(src, col === 2 ? "l" : "r");
+  drawCurve(p1, M.pointer, "rgba(79,209,197,.9)", true);
+}
+function hintPair(pid) {
+  const els = [...matchArea.querySelectorAll('.mitem[data-pid="' + pid + '"]')];
+  for (const a of els) for (const b of els) if (pairOK(a, b)) return [a, b];
+  return null;
+}
+function matchHint() {
+  hideMatchHint();
+  let pair = null;
+  if (M.sel && freeDir(M.sel)) {
+    const other = [...matchArea.querySelectorAll('.mitem[data-pid="' + M.sel.dataset.pid + '"]')].find((e) => pairOK(M.sel, e));
+    if (other) pair = [M.sel, other];
+  }
+  if (!pair) {
+    const cand = M.cur.filter((p) => linkCount(p.id) < 2);
+    if (!cand.length) return;
+    shuffle(cand);
+    for (const p of cand) { pair = hintPair(p.id); if (pair) break; }
+  }
+  if (!pair) return;
+  pair.forEach((e) => e.classList.add("hintP"));
+  S.hints++; VERR.match.hints = S.hints;
+  startClock();
+  clearTimeout(M.hintT);
+  M.hintT = setTimeout(hideMatchHint, 2400);
+  beep([880, 1180], .12, "sine", .07);
+}
+
+/* ---------------- 计时 / 重置 / 模式 ---------------- */
+function fmt(ms) {
+  const s = Math.floor(ms / 1000);
+  return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+}
+const V = { view: "map", acc: { map: 0, match: 0 } };          // 当前视图 + 各自累计用时
+const VERR = { map: { errors: 0, hints: 0 }, match: { errors: 0, hints: 0 } };
+function elapsed() { return V.acc[V.view] + (S.started ? Date.now() - S.t0 : 0); }
+function tickClock() { $("#sTime").textContent = fmt(elapsed()); }
+function startClock() {
+  if (S.started) return;
+  S.started = true; S.t0 = Date.now();
+  clearInterval(S.timer);
+  S.timer = setInterval(tickClock, 250);
+  tickClock();
+}
+function pauseClock() {
+  if (!S.started) return;
+  V.acc[V.view] += Date.now() - S.t0;
+  S.started = false;
+  clearInterval(S.timer);
+  tickClock();
+}
+function resetClock() {
+  pauseClock();
+  V.acc[V.view] = 0; S.started = false;
+  clearInterval(S.timer);
+  $("#sTime").textContent = "00:00";
+}
+function bestKey() { return V.view === "map" ? "cn-puzzle-best-" + S.mode : "cn-puzzle-best-match-" + M.scope; }
+function readBest() {
+  try { const v = localStorage.getItem(bestKey()); return v ? parseInt(v, 10) : 0; } catch (e) { return 0; }
+}
+function showBest() {
+  const b = readBest();
+  $("#sBest").textContent = b ? fmt(b) : "--:--";
+}
+function toast(html) {
+  const t = $("#toast");
+  t.innerHTML = html; t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 2300);
+}
+function reset() {
+  resetClock();
+  S.placed = 0; S.errors = 0; S.hints = 0; S.sel = null; S.drag = null;
+  S.hover = null; VERR.map = { errors: 0, hints: 0 };
+  $("#sTime").textContent = "00:00"; $("#sErr").textContent = "0";
+  hideRings(); $("#win").classList.remove("show");
+  $("#tipbar").style.opacity = 1;
+  for (const p of PROV) {
+    p.placed = false;
+    p.g.classList.remove("on", "hover", "bad", "hintT");
+    p.lbl.classList.remove("on"); p.lead.classList.remove("on"); p.dot.classList.remove("on");
+  }
+  buildTray(); update(); showBest();
+  $("#toast").classList.remove("show");
+  $("#confetti").innerHTML = "";
+}
+function setMode(m) {
+  S.mode = m;
+  document.body.classList.remove("easy", "normal", "challenge");
+  document.body.classList.add(m);
+  document.querySelectorAll("#seg button").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
+  $("#tipbar").textContent = m === "easy"
+    ? "简单模式：地图上标出了所有省份名称，拖拽右侧碎片到位"
+    : m === "normal"
+      ? "普通模式：地图不显示名称，把碎片拖到正确位置（悬浮可看名称）"
+      : "挑战模式：只有轮廓，没有名称提示 —— 试试你记住了多少！";
+  reset();
+  try { localStorage.setItem("cn-puzzle-mode", m); } catch (e) {}
+}
+function win() {
+  pauseClock();
+  const ms = elapsed();
+  const best = readBest();
+  if (!best || ms < best) { try { localStorage.setItem(bestKey(), String(ms)); } catch (e) {} }
+  const score = S.errors + S.hints * 0.5;
+  const stars = score <= 5 && ms < 420000 ? 3 : score <= 14 ? 2 : 1;
+  const isMatch = V.view === "match";
+  $("#winTime").textContent = fmt(ms);
+  $("#winErr").textContent = S.errors;
+  $("#winHint").textContent = S.hints;
+  document.querySelectorAll("#winStars i").forEach((el, i) => el.classList.toggle("on", i < stars));
+  $("#winTitle").textContent = stars === 3
+    ? (isMatch ? "全部连对！行政区划掌握得很牢 🎉" : "完美！你是地图小达人 🎉")
+    : (isMatch ? "连线完成！🎉" : "拼图完成！🎉");
+  $("#winNote").textContent = isMatch
+    ? "提示：换个分区再练一遍（如「西北」「西南」），或切到「地图拼图」把省份摆回图上。"
+    : "提示：换「挑战」模式再试一次 —— 遮住所有名称，只看轮廓，你能拼对吗？";
+  $("#btnClose").textContent = isMatch ? "返回" : "看看地图";
+  $("#win").classList.add("show");
+  showBest();
+  confetti();
+  beep([523, 659, 784, 1047], .26, "sine", .1);
+}
+function confetti() {
+  const box = $("#confetti");
+  box.innerHTML = "";
+  const cols = ["#e9a23b", "#7fb77e", "#4fa3d1", "#c97ba8", "#8a7fd1", "#d98a6a", "#55b8b0", "#fff"];
+  for (let i = 0; i < 70; i++) {
+    const d = document.createElement("i");
+    d.className = "cf";
+    d.style.left = Math.random() * 100 + "%";
+    d.style.background = cols[i % cols.length];
+    d.style.animationDuration = (1.6 + Math.random() * 1.6) + "s";
+    d.style.animationDelay = (Math.random() * .7) + "s";
+    d.style.opacity = .9;
+    box.appendChild(d);
+  }
+}
+$("#btnReset").addEventListener("click", () => { V.view === "match" ? matchReset() : reset(); });
+$("#btnAgain").addEventListener("click", () => {
+  $("#win").classList.remove("show");
+  V.view === "match" ? matchReset() : reset();
+});
+$("#btnClose").addEventListener("click", () => $("#win").classList.remove("show"));
+$("#btnSound").addEventListener("click", (e) => {
+  S.sound = !S.sound;
+  e.currentTarget.textContent = S.sound ? "🔊" : "🔇";
+  if (S.sound) beep([880], .1, "sine", .08);
+});
+document.querySelectorAll("#seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+function setView(v, silent) {
+  if (V.view === v && !silent) return;
+  VERR[V.view].errors = S.errors; VERR[V.view].hints = S.hints;   // 保存当前视图的计数
+  pauseClock();
+  V.view = v;
+  S.errors = VERR[v].errors; S.hints = VERR[v].hints;
+  document.body.classList.toggle("view-match", v === "match");
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+  $("#seg").style.display = v === "map" ? "" : "none";
+  $("#sDoneLabel").textContent = v === "map" ? "已拼好" : "已连对";
+  $("#sErr").textContent = S.errors;
+  $("#sTime").textContent = fmt(V.acc[v]);
+  hideMatchHint(); hideRings(); setHover(null);
+  $("#win").classList.remove("show");
+  if (v === "match") {
+    if (!M.cur.length && !M.finished) matchReset();
+    else { updateMatchStat(); requestAnimationFrame(() => { redrawLinks(); redrawPend(); }); }
+  } else {
+    update(); showBest();
+  }
+  try { localStorage.setItem("cn-puzzle-view", v); } catch (e) {}
+}
+document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    setHover(null); S.sel = null; M.sel = null;
+    document.querySelectorAll(".cell.sel").forEach((c) => c.classList.remove("sel"));
+    clearSel(); hideMatchHint();
+  }
+  if (e.key === "r" || e.key === "R") { V.view === "match" ? matchReset() : reset(); }
+  if (e.key === "h" || e.key === "H") $("#btnHint").click();
+});
+window.addEventListener("resize", () => {
+  setHover(null);
+  if (V.view === "match") { redrawLinks(); redrawPend(); }
+});
+
+/* ---------------- 启动 ---------------- */
+(function init() {
+  let m = "easy", v = "map";
+  try {
+    m = localStorage.getItem("cn-puzzle-mode") || "easy";
+    v = localStorage.getItem("cn-puzzle-view") || "map";
+  } catch (e) {}
+  buildScopeChips();
+  setMode(m);
+  if (v === "match") setView("match");
+  showBest();
+})();
+</script>
+</body>
+</html>
