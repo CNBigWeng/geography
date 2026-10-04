@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1049,7 +1049,7 @@ window.addEventListener("pointerup", () => {
 /* ---------------- 地图切换 ---------------- */
 function activateMap(key, keepProgress) {
   if (key === "cn" || MAPS[key]) { /* ok */ } else key = "cn";
-  if (CURMAP.key === key && !keepProgress) { /* 同一张图也允许重建 */ }
+  pauseClock();              // 先结算上一个国家（此刻 key 仍指向旧国家），再切换
   CURMAP = MAPS[key];
   CUR = mapSet(key);
   CURID = {};
@@ -1074,6 +1074,7 @@ function activateMap(key, keepProgress) {
   resetZoom();                          // 换地图后复位缩放
   update();
   showBest();
+  showClock();                          // 显示新国家自己的计时（未开始则 00:00）
   try {
     localStorage.setItem("cn-puzzle-map", key);
     if (CURMAP.intl) localStorage.setItem("cn-puzzle-intl-map", key);
@@ -1386,7 +1387,7 @@ function buildScopeChips() {
     b.className = "chip" + (s === M.scope ? " on" : "");
     b.innerHTML = (s === "全部" ? "" : '<i style="background:' + REGION_COLOR[s] + '"></i>') + s +
       '<span class="cnt">' + n + "</span>";
-    b.addEventListener("click", () => { if (M.scope !== s) { M.scope = s; matchReset(); } });
+    b.addEventListener("click", () => { if (M.scope !== s) { pauseClock(); M.scope = s; matchReset(); } });
     box.appendChild(b);
   }
 }
@@ -1635,7 +1636,7 @@ function buildWriteChips() {
     b.className = "chip" + (s === W.scope ? " on" : "");
     b.innerHTML = (s === "全部" ? "" : '<i style="background:' + REGION_COLOR[s] + '"></i>') + s +
       '<span class="cnt">' + n + "</span>";
-    b.addEventListener("click", () => { if (W.scope !== s) { W.scope = s; writeReset(); } });
+    b.addEventListener("click", () => { if (W.scope !== s) { pauseClock(); W.scope = s; writeReset(); } });
     box.appendChild(b);
   }
 }
@@ -2011,35 +2012,49 @@ function fmt(ms) {
   const s = Math.floor(ms / 1000);
   return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
 }
-const V = { view: "map", acc: { map: 0, match: 0, write: 0 } };   // 当前视图 + 各自累计用时
+const V = { view: "map", acc: {} };   // 当前视图 + 各「练习单元」的累计用时（单元 key 见 clockKey）
 const VERR = { map: { errors: 0, hints: 0 }, match: { errors: 0, hints: 0 }, write: { errors: 0, hints: 0 } };
-function accKey() { return V.view === "intl" ? "map" : V.view; }   // 国际挑战与地图拼图共用计时
-function elapsed() { return V.acc[accKey()] + (S.started ? Date.now() - S.t0 : 0); }
-function tickClock() { $("#sTime").textContent = fmt(elapsed()); }
+/* 计时单元：一次练习 = 一个计时器
+   中国地图 = map:cn ／ 国际挑战 = intl:jp 等每国一个 ／ 连线、默写 = 按分区各一个 */
+function clockKey() {
+  if (V.view === "intl") return "intl:" + (CURMAP ? CURMAP.key : "jp");
+  if (V.view === "map") return "map:" + (CURMAP ? CURMAP.key : "cn");
+  if (V.view === "match") return "match:" + M.scope;
+  return "write:" + W.scope;
+}
+function accOf(k) { if (typeof V.acc[k] !== "number") V.acc[k] = 0; return V.acc[k]; }
+function elapsed() { return accOf(clockKey()) + (S.started ? Date.now() - S.t0 : 0); }
+function showClock() { $("#sTime").textContent = fmt(elapsed()); }
 function startClock() {
-  if (S.started) return;
+  if (S.started) return;                 // 同时最多只有一个计时器在跑
   S.started = true; S.t0 = Date.now();
   clearInterval(S.timer);
-  S.timer = setInterval(tickClock, 250);
-  tickClock();
+  S.timer = setInterval(showClock, 250);
+  showClock();
 }
 function pauseClock() {
   if (!S.started) return;
-  V.acc[accKey()] += Date.now() - S.t0;
+  V.acc[clockKey()] = accOf(clockKey()) + (Date.now() - S.t0);   // 记入当前单元后暂停
   S.started = false;
-  clearInterval(S.timer);
-  tickClock();
+  clearInterval(S.timer); S.timer = null;
+  showClock();
 }
 function resetClock() {
   pauseClock();
-  V.acc[accKey()] = 0; S.started = false;
-  clearInterval(S.timer);
-  $("#sTime").textContent = "00:00";
+  V.acc[clockKey()] = 0;
+  showClock();
 }
+/* 浏览器标签页切到后台时暂停，回到前台再继续（学生离开不算时间） */
+let clockResume = false;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { clockResume = S.started; pauseClock(); }
+  else if (clockResume) { clockResume = false; startClock(); }
+});
 function bestKey() {
-  return V.view === "map" ? "cn-puzzle-best-" + S.mode
-    : V.view === "match" ? "cn-puzzle-best-match-" + M.scope
-      : "cn-puzzle-best-write-" + W.scope;
+  if (V.view === "intl") return "cn-puzzle-best-intl-" + CURMAP.key + "-" + S.mode;
+  if (V.view === "match") return "cn-puzzle-best-match-" + M.scope;
+  if (V.view === "write") return "cn-puzzle-best-write-" + W.scope;
+  return "cn-puzzle-best-" + S.mode;
 }
 function readBest() {
   try { const v = localStorage.getItem(bestKey()); return v ? parseInt(v, 10) : 0; } catch (e) { return 0; }
@@ -2392,7 +2407,7 @@ function setView(v, silent) {
   $("#seg").style.display = isMapView() ? "" : "none";
   $("#sDoneLabel").textContent = isMapView() ? "已拼好" : v === "match" ? "已连对" : "已默对";
   $("#sErr").textContent = S.errors;
-  $("#sTime").textContent = fmt(V.acc[vk]);
+  showClock();                     // 显示「当前练习单元」自己的累计用时
   hideMatchHint(); hideRings(); setHover(null);
   $("#win").classList.remove("show");
   // 连线 / 默写只针对中国地图
