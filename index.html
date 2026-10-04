@@ -840,23 +840,111 @@ const S = {
 };
 let LABELS_UNUSED = null;
 
-/* ---------------- 音效 ---------------- */
-let AC = null;
-function beep(freqs, dur, type, gain) {
-  if (!S.sound) return;
+/* ---------------- 音效引擎（Web Audio 实时合成，零外部文件） ---------------- */
+let AC = null, MASTER = null;
+const VOL_MASTER = .5;                                     // 主音量
+function ac() {
+  AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === "suspended") { const p = AC.resume(); if (p && p.catch) p.catch(() => {}); }
+  if (!MASTER) { MASTER = AC.createGain(); MASTER.gain.value = VOL_MASTER; MASTER.connect(AC.destination); }
+  return AC;
+}
+/* 单音：支持滑音、包络、延迟起音 */
+function tone(f, o) {
+  if (!S.sound || !(f > 0)) return;
+  o = o || {};
   try {
-    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
-    if (AC.state === "suspended") AC.resume();
-    freqs.forEach((f, i) => {
-      const o = AC.createOscillator(), g = AC.createGain();
-      o.type = type || "sine"; o.frequency.value = f;
-      const st = AC.currentTime + i * dur * 0.8;
-      g.gain.setValueAtTime(0, st);
-      g.gain.linearRampToValueAtTime(gain || .12, st + .012);
-      g.gain.exponentialRampToValueAtTime(.0008, st + dur);
-      o.connect(g); g.connect(AC.destination); o.start(st); o.stop(st + dur + .02);
-    });
+    const c = ac(), t0 = c.currentTime + (o.at || 0), dur = o.dur || .16;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = o.type || "sine";
+    osc.frequency.setValueAtTime(f, t0);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.to), t0 + dur);
+    const peak = o.gain === undefined ? .16 : o.gain, atk = o.atk === undefined ? .007 : o.atk;
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(peak, t0 + atk);
+    g.gain.exponentialRampToValueAtTime(.0008, t0 + dur);
+    osc.connect(g); g.connect(MASTER);
+    osc.start(t0); osc.stop(t0 + dur + .04);
   } catch (e) { /* 忽略音频错误 */ }
+}
+/* 噪声：落位"咔哒"、翻页、烟花爆响等打击感 */
+function noise(o) {
+  if (!S.sound) return;
+  o = o || {};
+  try {
+    const c = ac(), t0 = c.currentTime + (o.at || 0), dur = o.dur || .06;
+    const n = Math.max(1, Math.floor(c.sampleRate * dur));
+    const buf = c.createBuffer(1, n, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const flt = c.createBiquadFilter();
+    flt.type = o.lp ? "lowpass" : "bandpass";
+    flt.frequency.setValueAtTime(o.freq || 1800, t0);
+    if (o.to) flt.frequency.exponentialRampToValueAtTime(Math.max(60, o.to), t0 + dur);
+    flt.Q.value = o.q || 1.1;
+    const g = c.createGain(); g.gain.value = o.gain === undefined ? .07 : o.gain;
+    src.connect(flt); flt.connect(g); g.connect(MASTER);
+    src.start(t0); src.stop(t0 + dur + .03);
+  } catch (e) { /* 忽略音频错误 */ }
+}
+/* 兼容旧写法：一串音依次响 */
+function beep(freqs, dur, type, gain) {
+  (freqs || []).forEach((f, i) => tone(f, { type: type, dur: dur, gain: gain, at: i * (dur || .16) * .8 }));
+}
+
+/* ---------------- 语义化音效 ---------------- */
+const PENTA = [0, 2, 4, 7, 9];                             // 五声音阶：落位音随进度往上爬
+function sfxPlace(prog) {                                  // 拼对 / 连对 / 默对
+  const step = Math.max(0, Math.round((prog || 0) * 15));
+  const f = 523.25 * Math.pow(2, (PENTA[step % 5] + 12 * Math.floor(step / 5)) / 12);
+  tone(f, { type: "triangle", dur: .2, gain: .12 });
+  tone(f * 2, { type: "sine", dur: .1, gain: .04 });
+  noise({ dur: .035, gain: .04, freq: 3000, q: .8 });
+}
+function sfxWrong() {                                      // 放错 / 连错 / 默错
+  tone(175, { type: "square", dur: .12, gain: .055, to: 120 });
+  tone(112, { type: "sine", dur: .2, gain: .085, to: 78, at: .02 });
+}
+function sfxHint() {                                       // 用提示
+  [880, 1174.7, 1568].forEach((f, i) => tone(f, { type: "sine", dur: .13, gain: .07 - i * .012, at: i * .075 }));
+}
+function sfxPick() {                                       // 拿起碎片 / 选中条目
+  tone(760, { type: "sine", dur: .04, gain: .045 });
+  noise({ dur: .018, gain: .025, freq: 3400 });
+}
+function sfxClick() {                                      // 按钮 / 标签 / 选项
+  tone(1180, { type: "sine", dur: .032, gain: .035 });
+}
+function sfxSwish() {                                      // 切换视图
+  noise({ dur: .16, gain: .04, freq: 700, to: 2600, lp: true });
+}
+function sfxRound() {                                      // 连线完成一轮
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, { type: "triangle", dur: .17, gain: .095, at: i * .085 }));
+}
+function sfxWin(stars) {                                   // 通关：星星逐颗点亮 + 收尾和弦
+  const n = Math.max(1, Math.min(3, stars || 3));
+  for (let i = 0; i < n; i++) tone(1046.5 * Math.pow(2, i / 12), { type: "triangle", dur: .2, gain: .1, at: i * .13 });
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, { type: "triangle", dur: .34, gain: .115, at: .42 + i * .13 }));
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f) => tone(f, { type: "sine", dur: .9, gain: .045, at: .96 }));
+  noise({ dur: .55, gain: .04, freq: 6000, to: 900, lp: true, at: .96 });
+}
+function sfxBest() {                                       // 刷新最佳成绩
+  [1568, 2093, 2637].forEach((f, i) => tone(f, { type: "sine", dur: .3, gain: .06, at: i * .1 }));
+}
+function sfxUnlock() {                                     // 解锁国际挑战
+  [659.25, 830.61, 987.77, 1318.5].forEach((f, i) => tone(f, { type: "triangle", dur: .26, gain: .105, at: i * .11 }));
+}
+function sfxFlag() {                                       // 国庆庆祝开场
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, { type: "triangle", dur: .26, gain: .08, at: i * .1 }));
+}
+function sfxPop() {                                        // 烟花爆响
+  noise({ dur: .3, gain: .055, freq: 2200, to: 180, lp: true });
+  tone(95, { type: "sine", dur: .22, gain: .05, to: 52 });
+  noise({ dur: .5, gain: .02, freq: 5200, q: .6 });
+}
+function sfxDeny() {                                       // "还不能进"的提示音
+  tone(300, { type: "square", dur: .1, gain: .045 });
+  tone(220, { type: "square", dur: .14, gain: .045, at: .1 });
 }
 
 /* ---------------- 建图 ---------------- */
@@ -1003,9 +1091,9 @@ function zoomBy(f, sx, sy) {
 $("#zoomCtl").addEventListener("click", (e) => {
   const z = e.target.dataset && e.target.dataset.z;
   if (!z) return;
-  if (z === "in") zoomBy(1.5);
-  else if (z === "out") zoomBy(1 / 1.5);
-  else resetZoom();
+  if (z === "in") { zoomBy(1.5); tone(880, { type: "sine", dur: .035, gain: .035 }); }
+  else if (z === "out") { zoomBy(1 / 1.5); tone(620, { type: "sine", dur: .035, gain: .035 }); }
+  else { resetZoom(); tone(760, { type: "sine", dur: .05, gain: .035 }); }
 });
 board.addEventListener("wheel", (ev) => {
   if (!isMapView()) return;
@@ -1110,7 +1198,7 @@ function buildIntlChips() {
     b.className = "chip" + (k === CURMAP.key ? " on" : "");
     b.dataset.map = k;
     b.innerHTML = mp.flag + " " + mp.name + '<span class="cnt">' + n + "</span>";
-    b.addEventListener("click", () => { if (CURMAP.key !== k) { activateMap(k); } });
+    b.addEventListener("click", () => { if (CURMAP.key !== k) activateMap(k); });
     box.appendChild(b);
   }
   const hint = document.createElement("div");
@@ -1199,6 +1287,7 @@ function onPieceDown(ev) {
   if (!p || p.placed) return;
   ev.preventDefault();
   startClock();
+  sfxPick();
   S.sel = p;
   document.querySelectorAll(".cell.sel").forEach((c) => c.classList.remove("sel"));
   p.cell.classList.add("sel");
@@ -1272,7 +1361,7 @@ board.addEventListener("pointerup", (ev) => {                 // 点选后点击
     placePiece(S.sel, g, ev.clientX, ev.clientY);
   } else if (hov) {
     S.errors++; $("#sErr").textContent = S.errors;
-    flash(hov); beep([180, 140], .16, "square", .08);
+    flash(hov); sfxWrong();
   }
 });
 
@@ -1294,7 +1383,7 @@ function placePiece(p, ghost, cx, cy) {
     p.g.classList.add("on");
     p.lbl.classList.add("on");
     if (p.L && p.L.lead) { p.lead.classList.add("on"); p.dot.classList.add("on"); }
-    beep([660 + Math.random() * 80, 990], .2, "sine", .1);
+    sfxPlace(S.placed / CUR.length);                       // 音高随进度爬升
     toast(info(p));
     $("#tipbar").style.opacity = 0;
     update();
@@ -1310,7 +1399,7 @@ function info(p) {
 function wrong(p, ghost, hov) {
   S.errors++;
   $("#sErr").textContent = S.errors;
-  beep([190, 130], .17, "square", .07);
+  sfxWrong();
   ghost.style.transition = "transform .3s";
   ghost.style.transform += " rotate(6deg)";
   setTimeout(() => { ghost.style.opacity = "0"; }, 180);
@@ -1347,7 +1436,7 @@ $("#btnHint").addEventListener("click", () => {
   if (!p) return;
   if (!S.sel) { p.cell && p.cell.classList.add("sel"); S.sel = p; }
   hintTarget(p, true);
-  beep([880, 1180], .12, "sine", .07);
+  sfxHint();
 });
 function viewReset() { V.view === "match" ? matchReset() : V.view === "write" ? writeReset() : reset(); }
 
@@ -1481,6 +1570,7 @@ function onItemDown(ev) {
   if (M.sel === el) { el.classList.remove("sel"); M.sel = null; redrawPend(); return; }
   clearSel();
   M.sel = el; el.classList.add("sel");
+  sfxPick();
   M.pend = { el, sx: ev.clientX, sy: ev.clientY, moved: false };
   window.addEventListener("pointermove", onItemMove);
   window.addEventListener("pointerup", onItemUp);
@@ -1524,7 +1614,7 @@ function connect(a, b) {
   if (L.dataset.pid !== R.dataset.pid) {                       // 连错
     S.errors++; VERR.match.errors = S.errors;
     $("#sErr").textContent = S.errors;
-    beep([190, 130], .17, "square", .07);
+    sfxWrong();
     [L, R].forEach((el) => { el.classList.add("bad"); setTimeout(() => el.classList.remove("bad"), 520); });
     redrawPend();
     return;
@@ -1537,7 +1627,7 @@ function connect(a, b) {
     el.style.borderColor = c; el.style.background = tint(c, .16); el.style.color = "#fff";
   });
   M.links.push({ a: L, b: R, pid });
-  beep([700 + Math.random() * 90, 1000], .16, "sine", .09);
+  sfxPlace(M.links.length / Math.max(1, M.cur.length * 2));
   redrawLinks();
   redrawPend();
   if (linkCount(pid) === 2) {                                   // 该省「简称+行政中心」都连好了
@@ -1552,6 +1642,7 @@ function checkRoundDone() {
   if (M.busy || !M.cur.length) return;
   if (M.cur.every((p) => linkCount(p.id) === 2)) {
     M.busy = true;
+    sfxRound();
     clearTimeout(M.tNext);
     M.tNext = setTimeout(() => { M.round++; if (V.view === "match") nextRound(); }, 950);
   }
@@ -1619,7 +1710,7 @@ function matchHint() {
   startClock();
   clearTimeout(M.hintT);
   M.hintT = setTimeout(hideMatchHint, 2400);
-  beep([880, 1180], .12, "sine", .07);
+  sfxHint();
 }
 
 /* ================= 默写模式（看地图写 全称 · 简称 · 行政中心） ================= */
@@ -1733,14 +1824,14 @@ function writeSubmit() {
   $("#wSubmit").textContent = "下一题（Enter）";
   if (all) {
     W.done++;
-    beep([680, 1010], .18, "sine", .09);
+    sfxPlace(W.done / Math.max(1, W.done + W.queue.length));
     feedback(p, res, true, hinted);
     updateWriteStat();
     setTimeout(() => { if (V.view === "write" && W.cur === p && W.revealed) writeNext(); }, 1300);
   } else {
     S.errors++; VERR.write.errors = S.errors;
     $("#sErr").textContent = S.errors;
-    beep([190, 140], .17, "square", .07);
+    sfxWrong();
     W.queue.push(p);                                        // 错题回炉，稍后再默一遍
     feedback(p, res, false, hinted);
     updateWriteStat();
@@ -1785,7 +1876,7 @@ function writeHint() {
   }
   S.hints++; VERR.write.hints = S.hints;
   startClock();
-  beep([880, 1180], .12, "sine", .07);
+  sfxHint();
 }
 function writeGiveUp() {
   if (!W.cur || W.revealed) { writeNext(); return; }
@@ -2112,6 +2203,7 @@ function unlockIntl() {
   try { localStorage.setItem("cn-puzzle-intl", "1"); } catch (e) {}
   document.body.classList.add("intl-unlocked");
   refreshIntlTip();
+  sfxUnlock();
   toast('🌍 已解锁 <b>国际挑战</b> —— 英、法、美、俄、日、朝、韩 7 国省区等你挑战');
 }
 function isMapView() { return V.view === "map" || V.view === "intl"; }
@@ -2119,7 +2211,8 @@ function win() {
   pauseClock();
   const ms = elapsed();
   const best = readBest();
-  if (!best || ms < best) { try { localStorage.setItem(bestKey(), String(ms)); } catch (e) {} }
+  const isBest = !best || ms < best;
+  if (isBest) { try { localStorage.setItem(bestKey(), String(ms)); } catch (e) {} }
   const score = S.errors + S.hints * 0.5;
   const stars = score <= 5 && ms < 420000 ? 3 : score <= 14 ? 2 : 1;
   const isMatch = V.view === "match", isWrite = V.view === "write", isIntl = V.view === "intl";
@@ -2151,7 +2244,8 @@ function win() {
   $("#win").classList.add("show");
   showBest();
   confetti();
-  beep([523, 659, 784, 1047], .26, "sine", .1);
+  sfxWin(stars);
+  if (isBest) setTimeout(sfxBest, 2000);                   // 破纪录：等通关音效收尾后再响
   // 国庆庆祝只属于中国内容；国际挑战（英/法/美/俄/日/朝/韩）通关后不出现国庆界面
   clearTimeout(FEST_T);
   $("#btnFest").style.display = isIntl ? "none" : "";
@@ -2339,12 +2433,12 @@ function festival() {
   if (!box.classList.contains("show")) {
     box.classList.add("show");
     festStart();
-    beep([523, 659, 784, 1047, 1319], .24, "triangle", .085);
+    sfxFlag();
   } else {                                               // 已在庆祝：再来一波烟花
     if (!FW.running) festStart();
     FW.parts = []; FW.rockets = [];
     for (let i = 0; i < 5; i++) setTimeout(() => { if (FW.running) launchRocket(); }, i * 110);
-    beep([784, 1047, 1319], .18, "triangle", .07);
+    sfxPop();
   }
 }
 function closeFestival() {
@@ -2382,13 +2476,13 @@ $("#festival").addEventListener("click", (e) => { if (e.target.id === "festival"
 $("#btnSound").addEventListener("click", (e) => {
   S.sound = !S.sound;
   e.currentTarget.textContent = S.sound ? "🔊" : "🔇";
-  if (S.sound) beep([880], .1, "sine", .08);
+  if (S.sound) sfxClick();
 });
 document.querySelectorAll("#seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
 /* ---- 国际挑战解锁提示 ---- */
 function showIntlLock() {
   $("#intlLockBox").classList.add("show");
-  beep([300, 220], .16, "square", .06);
+  sfxDeny();
 }
 function hideIntlLock() { $("#intlLockBox").classList.remove("show"); }
 $("#lockClose").addEventListener("click", hideIntlLock);
@@ -2398,6 +2492,7 @@ $("#intlLockBox").addEventListener("click", (e) => { if (e.target.id === "intlLo
 function setView(v, silent) {
   if (V.view === v && !silent) return;
   if (v === "intl" && !intlUnlocked()) v = "map";  // 未解锁不允许进入国际挑战（含刷新后恢复视图）
+  if (V.view !== v) sfxSwish();                    // 真正换视图才响
   const vk = v === "intl" ? "map" : v;            // 国际挑战与地图拼图共用计数/计时
   closeFestival();
   clearAsk();
@@ -2438,6 +2533,12 @@ document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("cli
   if (b.dataset.view === "intl" && !intlUnlocked()) { showIntlLock(); return; }   // 硬锁：需先通关中国「挑战」模式
   setView(b.dataset.view);
 }));
+/* 统一的按钮点击音（缩放按钮自带方向音，排除；静音时 tone() 内部会直接返回） */
+document.addEventListener("pointerdown", (e) => {
+  const t = e.target;
+  const b = t && t.closest ? t.closest("button") : null;
+  if (b && !b.disabled && !b.closest("#zoomCtl")) sfxClick();
+}, true);
 window.addEventListener("keydown", (e) => {
   const t = e.target;
   if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;   // 输入时屏蔽快捷键
