@@ -2152,9 +2152,14 @@ function win() {
   showBest();
   confetti();
   beep([523, 659, 784, 1047], .26, "sine", .1);
-  FEST_T = setTimeout(() => {                 // 通关后自动庆祝国庆
-    if ($("#win").classList.contains("show")) festival();
-  }, 1600);
+  // 国庆庆祝只属于中国内容；国际挑战（英/法/美/俄/日/朝/韩）通关后不出现国庆界面
+  clearTimeout(FEST_T);
+  $("#btnFest").style.display = isIntl ? "none" : "";
+  if (!isIntl) {
+    FEST_T = setTimeout(() => {
+      if ($("#win").classList.contains("show")) festival();
+    }, 1600);
+  }
 }
 function confetti() {
   const box = $("#confetti");
