@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -356,6 +356,15 @@
   #boardWrap.panning #board{cursor:grabbing}
   #boardWrap.zoomed #board{cursor:grab}
 
+  /* ---------- 国际挑战解锁提示 ---------- */
+  #intlLockBox{position:fixed;inset:0;z-index:140;display:none;align-items:center;justify-content:center;
+    background:var(--scrim);backdrop-filter:blur(6px)}
+  #intlLockBox.show{display:flex}
+  #intlLockBox .card{width:min(92vw,404px);padding:24px 26px 20px}
+  #intlLockBox .lockp{font-size:13px;color:var(--dim);line-height:1.8;margin:12px 0 18px;text-align:left}
+  #intlLockBox .lockp b{color:var(--gold)}
+  #intlLockBox .lockp em{font-style:normal;color:var(--accent)}
+
   /* ---------- 地图风格抽屉 ---------- */
   #thScrim{position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .25s}
   #thScrim.on{opacity:1;pointer-events:auto}
@@ -584,6 +593,18 @@
     <div class="fest-btns">
       <button class="btn gold" id="btnFestAgain">🎆 再放一次</button>
       <button class="btn line" id="btnFestClose">继续拼图</button>
+    </div>
+  </div>
+</div>
+
+<div id="intlLockBox">
+  <div class="card">
+    <h2>🔒 国际挑战尚未解锁</h2>
+    <p class="lockp">国际挑战包含<b>英、法、美、俄、日、朝、韩</b> 7 个国家、共 226 个一级行政区。<br>
+      解锁条件：完成中国地图拼图的 <em>「挑战」模式</em> —— 在地图上把 34 个省级行政区全部拼对（全程没有任何名称提示）。</p>
+    <div class="btns">
+      <button class="btn pri" id="lockGo">去挑战中国地图</button>
+      <button class="btn" id="lockClose">知道了</button>
     </div>
   </div>
 </div>
@@ -2344,8 +2365,19 @@ $("#btnSound").addEventListener("click", (e) => {
   if (S.sound) beep([880], .1, "sine", .08);
 });
 document.querySelectorAll("#seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+/* ---- 国际挑战解锁提示 ---- */
+function showIntlLock() {
+  $("#intlLockBox").classList.add("show");
+  beep([300, 220], .16, "square", .06);
+}
+function hideIntlLock() { $("#intlLockBox").classList.remove("show"); }
+$("#lockClose").addEventListener("click", hideIntlLock);
+$("#lockGo").addEventListener("click", () => { hideIntlLock(); setView("map"); setMode("challenge"); });
+$("#intlLockBox").addEventListener("click", (e) => { if (e.target.id === "intlLockBox") hideIntlLock(); });
+
 function setView(v, silent) {
   if (V.view === v && !silent) return;
+  if (v === "intl" && !intlUnlocked()) v = "map";  // 未解锁不允许进入国际挑战（含刷新后恢复视图）
   const vk = v === "intl" ? "map" : v;            // 国际挑战与地图拼图共用计数/计时
   closeFestival();
   clearAsk();
@@ -2382,10 +2414,14 @@ function setView(v, silent) {
   }
   try { localStorage.setItem("cn-puzzle-view", v); } catch (e) {}
 }
-document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => {
+  if (b.dataset.view === "intl" && !intlUnlocked()) { showIntlLock(); return; }   // 硬锁：需先通关中国「挑战」模式
+  setView(b.dataset.view);
+}));
 window.addEventListener("keydown", (e) => {
   const t = e.target;
   if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;   // 输入时屏蔽快捷键
+  if (e.key === "Escape" && $("#intlLockBox").classList.contains("show")) { hideIntlLock(); return; }
   if (e.key === "Escape" && $("#themePanel").classList.contains("on")) { openTheme(false); return; }
   if ($("#festival").classList.contains("show")) {          // 庆祝时任意键退出，避免误触快捷键
     if (e.key === "Escape" || e.key === "Enter" || e.key === " ") closeFestival();
@@ -2418,6 +2454,7 @@ window.addEventListener("resize", () => {
   if (intlUnlocked()) document.body.classList.add("intl-unlocked");
   activateMap("cn");                    // 先把中国地图建好
   setMode(m);
+  if (v === "intl" && !intlUnlocked()) v = "map";     // 未解锁则不恢复国际挑战视图
   if (v !== "map") setView(v);
   else activateMap("cn");
   showBest();
