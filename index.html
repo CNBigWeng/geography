@@ -480,10 +480,31 @@
     .board-wrap{min-height:46vh}
     .tray{max-height:38vh}
     .tray-grid{grid-template-columns:repeat(5,1fr)}
-    header{gap:10px;padding:10px 12px}
+    header{gap:8px;padding:10px 12px;flex-wrap:wrap;align-items:center}
+    .brand{flex:1 1 100%;min-width:0}
     .brand h1{font-size:16px}
-    .stats{order:3;width:100%;margin-left:0}
-    .stat{flex:1}
+    .stats{order:3;width:100%;margin-left:0;flex-wrap:wrap;gap:6px}
+    .stat{flex:1 1 60px;min-width:60px}
+    /* 五个视图标签在窄屏放不下：允许横向滑动，不撑破边框 */
+    .tabs{order:1;max-width:100%;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+          scrollbar-width:none;-ms-overflow-style:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tools{order:2;width:100%;flex-wrap:wrap;gap:6px}
+    .seg{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+    .seg::-webkit-scrollbar{display:none}
+    .btn{white-space:nowrap}
+  }
+  @media (max-width:540px){
+    header{padding:8px 10px;gap:6px}
+    .brand h1{font-size:15px}
+    .brand .sub{display:none}
+    .tabs button{padding:6px 8px;font-size:12px}
+    .seg button{padding:5px 9px;font-size:12.5px}
+    .btn{padding:6px 8px;font-size:12.5px}
+    .stat b{font-size:15px}
+    .stat span{font-size:10.5px}
+    main{padding:0 8px 8px}
+    .tray-grid{grid-template-columns:repeat(4,1fr);gap:6px}
   }
 </style>
 </head>
@@ -1086,7 +1107,9 @@ function layoutLabels(items, view, scale, gap) {
   const M = gap === undefined ? 2.5 : gap;
   const overlap = (a, b) => !(a[0] + a[2] < b[0] || b[0] + b[2] < a[0] || a[1] + a[3] < b[1] || b[1] + b[3] < a[1]);
   for (const it of items) {
-    const fs = (it.area > 45000 ? 16 : (it.bw < 46 || it.bh < 46 ? 11 : 13.5)) * K;
+    // 同一张图内字号统一（原来按国土大小分 17/15/12 三档，看起来忽大忽小）；
+  // 国家多的图（亚洲 48 国）整体小一档，否则小屏上名字会挤成一团
+  const fs = (CUR.length > 30 ? 13 : 15) * K;
     const w = it.short.length * fs * 0.98 + 3, h = fs * 1.12 + 3;
     const cands = [[0, 0]];
     // 搜索半径按辖区自身大小封顶：小国的地名只会挪到领土边上，不会飘到大洋或邻国腹地
@@ -1306,8 +1329,13 @@ function buildBoard() {
   // 中国地图用简称（正是要练的内容），国际/大洲拼图用完整名称（国名不缩写）
   const items = CUR.map((p) => ({ id: p.id, short: p.short, ax: p.anchor[0], ay: p.anchor[1], bw: p.bw, bh: p.bh, area: p.area, poly: p.main }))
     .sort((a, b) => b.area - a.area);
-  const LB = layoutLabels(items, VB, CURMAP.intl ? (CUR.length > 40 ? 0.72 : 0.88) : 1,
-    CURMAP.intl ? (CUR.length > 40 ? 7 : 5) : 3);
+  // 手机等小屏上整张地图被等比缩小，名称会跟着变得极小（48 国的图在 390px 宽屏上
+  // 只有约 3.5 像素）。这里按看板宽度反向补偿，保证屏幕上的实际字号。
+  const boardPx = (document.getElementById("boardWrap") || {}).clientWidth || 900;
+  const screenK = Math.max(1, Math.min(3.4, 940 / Math.max(260, boardPx)));
+  const baseK = CURMAP.intl ? (CUR.length > 40 ? 0.92 : 1.05) : 1;
+  const LB = layoutLabels(items, VB, baseK * screenK,
+    (CURMAP.intl ? (CUR.length > 40 ? 7 : 5) : 3) * Math.min(screenK, 1.6));
   for (const p of CUR) {
     const L = LB[p.id];
     p.L = L;
